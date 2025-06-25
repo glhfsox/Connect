@@ -1,21 +1,22 @@
-﻿# CMakeList.txt: проект CMake для Connect; включите исходный код и определения,
-# укажите здесь логику для конкретного проекта.
-#
-cmake_minimum_required (VERSION 3.8)
+cmake_minimum_required(VERSION 3.14)
+project("Connect")
 
-# Включение горячей перезагрузки для компиляторов MSVC, если поддерживается.
-if (POLICY CMP0141)
-  cmake_policy(SET CMP0141 NEW)
-  set(CMAKE_MSVC_DEBUG_INFORMATION_FORMAT "$<IF:$<AND:$<C_COMPILER_ID:MSVC>,$<CXX_COMPILER_ID:MSVC>>,$<$<CONFIG:Debug,RelWithDebInfo>:EditAndContinue>,$<$<CONFIG:Debug,RelWithDebInfo>:ProgramDatabase>>")
-endif()
+set(CMAKE_AUTOMOC ON)
+set(CMAKE_AUTORCC ON)
+set(CMAKE_AUTOUIC ON)
 
-project ("Connect")
+find_package(Qt5 REQUIRED COMPONENTS Widgets Network)
+find_package(PkgConfig REQUIRED)
+pkg_check_modules(SODIUM REQUIRED libsodium)
 
-# Добавьте источник в исполняемый файл этого проекта.
-add_executable (Connect "Connect.cpp" "Connect.h")
+add_executable(Connect
+    Connect.cpp
+    Connect.h
+    Messenger.cpp
+    Messenger.h
+)
 
-if (CMAKE_VERSION VERSION_GREATER 3.12)
-  set_property(TARGET Connect PROPERTY CXX_STANDARD 20)
-endif()
+target_include_directories(Connect PRIVATE ${SODIUM_INCLUDE_DIRS})
+target_link_libraries(Connect PRIVATE Qt5::Widgets Qt5::Network ${SODIUM_LIBRARIES})
 
-# TODO: Добавьте тесты и целевые объекты, если это необходимо.
+set_target_properties(Connect PROPERTIES CXX_STANDARD 20)
