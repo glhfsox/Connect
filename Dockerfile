@@ -2,16 +2,27 @@
 FROM ubuntu:22.04 as builder
 
 # Install dependencies
-RUN apt-get update && apt-get install -y \
-    build-essential \
-    cmake \
-    git \
-    pkg-config \
-    libssl-dev \
-    libsqlite3-dev \
-    qt6-base-dev \
-    qt6-websockets-dev \
-    libsodium-dev \
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+        build-essential \
+        cmake \
+        git \
+        pkg-config \
+        libssl-dev \
+        libsqlite3-dev \
+        qt6-base-dev \
+        qt6-websockets-dev \
+        libsodium-dev \
+    || (sleep 10 && apt-get update && apt-get install -y --no-install-recommends \
+        build-essential \
+        cmake \
+        git \
+        pkg-config \
+        libssl-dev \
+        libsqlite3-dev \
+        qt6-base-dev \
+        qt6-websockets-dev \
+        libsodium-dev) \
     && rm -rf /var/lib/apt/lists/*
 
 # Set working directory
@@ -29,13 +40,57 @@ RUN mkdir build && cd build \
 FROM ubuntu:22.04
 
 # Install runtime dependencies
-RUN apt-get update && apt-get install -y \
-    libssl3 \
-    libsqlite3-0 \
-    libqt6core6 \
-    libqt6network6 \
-    libqt6websockets6 \
-    libsodium23 \
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+        libssl3 \
+        libsqlite3-0 \
+        libqt6core6 \
+        libqt6network6 \
+        libqt6websockets6 \
+        libsodium23 \
+        dbus \
+        libapparmor1 \
+        libb2-1 \
+        libbrotli1 \
+        libdbus-1-3 \
+        libdouble-conversion3 \
+        libexpat1 \
+        libglib2.0-0 \
+        libglib2.0-data \
+        libicu70 \
+        libpcre2-16-0 \
+        libproxy1v5 \
+        libqt6dbus6 \
+        libqt6gui6 \
+        libqt6widgets6 \
+        libxml2 \
+        shared-mime-info \
+        xdg-user-dirs \
+    || (sleep 10 && apt-get update && apt-get install -y --no-install-recommends \
+        libssl3 \
+        libsqlite3-0 \
+        libqt6core6 \
+        libqt6network6 \
+        libqt6websockets6 \
+        libsodium23 \
+        dbus \
+        libapparmor1 \
+        libb2-1 \
+        libbrotli1 \
+        libdbus-1-3 \
+        libdouble-conversion3 \
+        libexpat1 \
+        libglib2.0-0 \
+        libglib2.0-data \
+        libicu70 \
+        libpcre2-16-0 \
+        libproxy1v5 \
+        libqt6dbus6 \
+        libqt6gui6 \
+        libqt6widgets6 \
+        libxml2 \
+        shared-mime-info \
+        xdg-user-dirs) \
     && rm -rf /var/lib/apt/lists/*
 
 # Create app user
