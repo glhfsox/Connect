@@ -1,0 +1,15 @@
+{
+  "name": "connect",
+  "version": "1.0.0",
+  "dependencies": [
+    "qtbase",
+    "qtwebsockets",
+    "qtmultimedia",
+    "libsodium",
+    "uwebsockets",
+    "nlohmann-json",
+    "sqlitecpp",
+    "openssl",
+    "ffmpeg"
+  ]
+}

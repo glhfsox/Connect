@@ -1,0 +1,26 @@
+version: '3.8'
+
+services:
+  connect-server:
+    build: .
+    ports:
+      - "9001:9001"
+    environment:
+      - CONNECT_PORT=9001
+      - CONNECT_DB_PATH=/app/data/messenger.db
+    volumes:
+      - ./data:/app/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Optional: Add Redis for session management (future enhancement)
+  # redis:
+  #   image: redis:alpine
+  #   ports:
+  #     - "6379:6379"
+  #   restart: unless-stopped 

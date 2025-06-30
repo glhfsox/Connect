@@ -1,0 +1,36 @@
+# Git
+.git
+.gitignore
+
+# Build artifacts
+build/
+out/
+.vs/
+
+# Documentation
+*.md
+ARCHITECTURE.md
+QUICK_START.md
+
+# IDE files
+.vscode/
+.idea/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Temporary files
+*.tmp
+*.log
+
+# vcpkg (will install dependencies in container)
+vcpkg/
+vcpkg_installed/
+
+# Data (will be mounted as volume)
+data/
+media/
+
+# Certificates (will be mounted as volume)
+certs/ 

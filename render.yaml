@@ -1,0 +1,14 @@
+services:
+  - type: web
+    name: connect-messenger
+    env: docker
+    plan: free
+    dockerfilePath: ./Dockerfile
+    dockerCommand: ./ConnectServer
+    envVars:
+      - key: CONNECT_PORT
+        value: 10000
+      - key: CONNECT_DB_PATH
+        value: /app/data/messenger.db
+    healthCheckPath: /health
+    autoDeploy: true 
