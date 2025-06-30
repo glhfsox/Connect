@@ -10,8 +10,8 @@ RUN apt-get update \
         pkg-config \
         libssl-dev \
         libsqlite3-dev \
-        qt6-base-dev \
-        qt6-websockets-dev \
+        qtbase5-dev \
+        qtwebsockets5-dev \
         libsodium-dev \
     || (sleep 10 && apt-get update && apt-get install -y --no-install-recommends \
         build-essential \
@@ -20,8 +20,8 @@ RUN apt-get update \
         pkg-config \
         libssl-dev \
         libsqlite3-dev \
-        qt6-base-dev \
-        qt6-websockets-dev \
+        qtbase5-dev \
+        qtwebsockets5-dev \
         libsodium-dev) \
     && rm -rf /var/lib/apt/lists/*
 
@@ -44,9 +44,9 @@ RUN apt-get update \
     && apt-get install -y --no-install-recommends \
         libssl3 \
         libsqlite3-0 \
-        libqt6core6 \
-        libqt6network6 \
-        libqt6websockets6 \
+        libqt5core5a \
+        libqt5network5 \
+        libqt5websockets5 \
         libsodium23 \
         dbus \
         libapparmor1 \
@@ -60,18 +60,18 @@ RUN apt-get update \
         libicu70 \
         libpcre2-16-0 \
         libproxy1v5 \
-        libqt6dbus6 \
-        libqt6gui6 \
-        libqt6widgets6 \
+        libqt5dbus5 \
+        libqt5gui5 \
+        libqt5widgets5 \
         libxml2 \
         shared-mime-info \
         xdg-user-dirs \
     || (sleep 10 && apt-get update && apt-get install -y --no-install-recommends \
         libssl3 \
         libsqlite3-0 \
-        libqt6core6 \
-        libqt6network6 \
-        libqt6websockets6 \
+        libqt5core5a \
+        libqt5network5 \
+        libqt5websockets5 \
         libsodium23 \
         dbus \
         libapparmor1 \
@@ -85,9 +85,9 @@ RUN apt-get update \
         libicu70 \
         libpcre2-16-0 \
         libproxy1v5 \
-        libqt6dbus6 \
-        libqt6gui6 \
-        libqt6widgets6 \
+        libqt5dbus5 \
+        libqt5gui5 \
+        libqt5widgets5 \
         libxml2 \
         shared-mime-info \
         xdg-user-dirs) \
