@@ -2,6 +2,7 @@
 #include <iostream>
 #include <sstream>
 #include <iomanip>
+#include <cstring>
 
 Encryption::Encryption() {
     if (sodium_init() < 0) {

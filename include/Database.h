@@ -49,8 +49,8 @@ public:
     bool createUser(const std::string& username);
 
 private:
-    sqlite3* m_db;
     std::string m_dbPath;
+    sqlite3* m_db;
     
     void createTables();
 }; 
