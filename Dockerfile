@@ -11,28 +11,15 @@ RUN apt-get update \
         libssl-dev \
         libsqlite3-dev \
         qt6-base-dev \
-        qt6-websockets-dev \
         qt6-multimedia-dev \
         libsodium-dev \
         curl \
         zip \
         tar \
         wget \
-    || (sleep 10 && apt-get update && apt-get install -y --no-install-recommends \
-        build-essential \
-        cmake \
-        git \
-        pkg-config \
-        libssl-dev \
-        libsqlite3-dev \
-        qt6-base-dev \
-        qt6-websockets-dev \
-        qt6-multimedia-dev \
-        libsodium-dev \
-        curl \
-        zip \
-        tar \
-        wget) \
+        # Qt 6 WebSockets dev пакет в некоторых версиях репозитория называется по-разному,
+        # поэтому пытаемся сначала установить основной вариант, а если он недоступен – fallback.
+        && (apt-get install -y qt6-websockets-dev || apt-get install -y libqt6websockets6-dev) \
     && rm -rf /var/lib/apt/lists/*
 
 # Set working directory
