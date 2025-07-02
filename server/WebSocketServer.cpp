@@ -14,8 +14,8 @@ WebSocketServer::WebSocketServer(QObject* parent)
     , m_server(new QWebSocketServer("Connect Messenger", QWebSocketServer::NonSecureMode, this))
     , m_httpServer(new QTcpServer(this))
 {
-    connect(m_server, &QWebSocketServer::newConnection, this, &WebSocketServer::onNewConnection);
-    connect(m_httpServer, &QTcpServer::newConnection, this, &WebSocketServer::onHttpRequest);
+    connect(m_server.get(), &QWebSocketServer::newConnection, this, &WebSocketServer::onNewConnection);
+    connect(m_httpServer.get(), &QTcpServer::newConnection, this, &WebSocketServer::onHttpRequest);
 }
 
 WebSocketServer::~WebSocketServer() {
