@@ -15,142 +15,200 @@ A modern C++ messenger with WebSocket support, encryption, and multimedia capabi
 - **Cloud-ready** with Docker support
 - **Health checks** for monitoring
 
-## 🌐 Quick Deploy
+## 🌐 Quick Deploy on Railway
 
-### Railway (Recommended)
-[![Deploy on Railway](https://railway.app/button.svg)](https://railway.app/template/new?template=https://github.com/yourusername/Connect)
+### One-Click Deploy
+1. Fork this repository on GitHub
+2. Go to [Railway](https://railway.app)
+3. Click "New Project" → "Deploy from GitHub repo"
+4. Select your forked repository
+5. Railway will automatically detect and deploy using the Dockerfile
+6. Your app will be available at `https://your-app-name.up.railway.app`
 
-### Render
-[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy)
-
-### Fly.io
+### Manual Railway Setup
 ```bash
-fly launch
+# Install Railway CLI
+npm install -g @railway/cli
+
+# Login to Railway
+railway login
+
+# Deploy the project
+railway link
+railway up
 ```
+
+The server will automatically:
+- Use port 9001 for WebSocket connections
+- Use port 9002 for health checks
+- Create SQLite database in `/app/data/`
+- Support up to 1000 concurrent users
 
 ## 📋 Requirements
 
 ### For Local Development
-- Windows 10/11
-- Visual Studio 2022 with C++20 support
-- CMake 3.10+
-- vcpkg (already included in the project)
+- **Windows**: Windows 10/11, Visual Studio 2022, CMake 3.10+
+- **Linux**: Ubuntu 20.04+, GCC 9+, CMake 3.10+
+- **Dependencies**: Qt6/Qt5, SQLite3, libsodium, OpenSSL
 
 ### For Cloud Deployment
 - GitHub repository
-- Docker (for local testing)
-- Account on chosen platform
+- Railway/Render/Fly.io account
 
 ## 🛠 Local Development
 
-### 1. Installing Dependencies
+### Quick Start (Recommended)
 
-#### Installing Visual Studio 2022
-1. Download Visual Studio 2022 Community from the [official website](https://visualstudio.microsoft.com/downloads/)
-2. During installation, select "Desktop development with C++"
-3. Make sure the following components are selected:
-   - MSVC v143 - VS 2022 C++ x64/x86 build tools
-   - Windows 10/11 SDK
-   - CMake tools for Visual Studio
+#### Windows
+1. Double-click `build_project.bat` to build the project
+2. Double-click `start_server.bat` to start the server
+3. Double-click `start_client.bat` to start the client (if available)
 
-#### Installing CMake (if not installed via Visual Studio)
-1. Download CMake from the [official website](https://cmake.org/download/)
-2. Install, selecting "Add CMake to the system PATH"
-
-### 2. Building the Project
+#### Linux
 ```bash
-# Clone the repository
-git clone <repository-url>
-cd Connect
-
-# Install dependencies
-.\vcpkg\vcpkg.exe install --triplet=x64-windows
+# Make scripts executable
+chmod +x build_project.sh start_server.sh
 
 # Build the project
-mkdir build
-cd build
+./build_project.sh
+
+# Start the server
+./start_server.sh
+```
+
+### Manual Build
+
+#### Windows with Visual Studio
+```bash
+# Install dependencies via vcpkg
+.\vcpkg\vcpkg.exe install --triplet=x64-windows
+
+# Configure and build
+mkdir build && cd build
 cmake .. -DCMAKE_TOOLCHAIN_FILE=../vcpkg/scripts/buildsystems/vcpkg.cmake -G "Visual Studio 17 2022" -A x64
 cmake --build . --config Release
 ```
 
+#### Linux
+```bash
+# Install system dependencies
+sudo apt-get update
+sudo apt-get install -y build-essential cmake pkg-config libssl-dev libsqlite3-dev libsodium-dev
+
+# Install Qt6 or Qt5
+sudo apt-get install -y qt6-base-dev qt6-websockets-dev qt6-multimedia-dev
+# OR for Qt5: sudo apt-get install -y qtbase5-dev qtwebsockets5-dev qtmultimedia5-dev
+
+# Build the project
+mkdir build && cd build
+cmake .. -DCMAKE_BUILD_TYPE=Release
+make -j$(nproc)
+```
+
 ## 🐳 Docker Development
 
-### Local Testing with Docker
+### Quick Start with Docker
 ```bash
-# Build and run
+# Build and run with docker-compose
+docker-compose up --build
+
+# Or manually
 docker build -t connect-messenger .
 docker run -p 9001:9001 -p 9002:9002 connect-messenger
-
-# Or use docker-compose
-docker-compose up --build
 ```
 
 ### Test Health Check
 ```bash
 curl http://localhost:9002/health
-# Should return: {"status":"healthy","online_users":0}
+# Expected response: {"status":"healthy","online_users":0}
 ```
 
-## 🚀 Running
+## 🚀 Running the Application
 
-### Starting the Server
-```bash
-# From build directory
-.\Release\ConnectServer.exe [port]
+### Server
+The server can be started in several ways:
+
+1. **Using shortcuts**:
+   - Windows: Double-click `start_server.bat`
+   - Linux: `./start_server.sh`
+
+2. **Direct execution**:
+   ```bash
+   # Windows
+   build\Release\ConnectServer.exe [port]
+   
+   # Linux
+   ./build/ConnectServer [port]
+   ```
+
+3. **With environment variables**:
+   ```bash
+   export PORT=9001
+   export CONNECT_DB_PATH=data/messenger.db
+   ./build/ConnectServer
+   ```
+
+### Client (if built)
+- Windows: Double-click `start_client.bat`
+- Linux: `./build/ConnectClient`
+
+## 📱 Using the Messenger
+
+### Server Connection
+The server automatically starts on:
+- **WebSocket**: Port 9001 (or specified port)
+- **Health Check**: Port 9002 (or port + 1)
+
+### WebSocket API
+```javascript
+// Connect to server
+const ws = new WebSocket('ws://localhost:9001');
+
+// Authenticate
+ws.send(JSON.stringify({
+    type: "auth",
+    username: "your-username"
+}));
+
+// Send message
+ws.send(JSON.stringify({
+    type: "message",
+    to: "recipient-username",
+    text: "Hello world!"
+}));
+
+// Request message history
+ws.send(JSON.stringify({
+    type: "history",
+    with: "other-username"
+}));
 ```
-
-By default, the server starts on port 9001.
-
-### Starting the Client
-```bash
-# From build directory
-.\Release\ConnectClient.exe
-```
-
-## 📱 Usage
-
-### Connecting to Server
-1. Start the server
-2. Start the client
-3. Enter a username
-4. Click "Connect to Server"
-5. Click "Login" to authenticate
-
-### Sending Messages
-1. Select a contact from the list
-2. Type your message in the input field
-3. Press Enter or click "Send"
-
-### Sending Media Files
-- **Files**: Click the paperclip button and select a file
-- **Voice messages**: Click the microphone button to record
 
 ## 🏗 Architecture
 
-### Server
-- **WebSocketServer**: WebSocket connection handling
-- **Database**: SQLite database operations
-- **Encryption**: Message encryption
-- **HTTP Server**: Health checks and monitoring
+### Server Components
+- **WebSocketServer**: Real-time communication (Port 9001)
+- **HTTPServer**: Health checks and monitoring (Port 9002)
+- **Database**: SQLite message storage
+- **Encryption**: libsodium for message security
 
-### Client
-- **MessengerClient**: Main application window
-- **ChatWidget**: Chat widget
-- **ContactListWidget**: Contact list
+### Client Components
+- **MessengerClient**: Main Qt application window
+- **ChatWidget**: Message display and input
+- **ContactListWidget**: User management
 
 ## 📊 Database Structure
 
-### Users Table
+### Tables
 ```sql
+-- Users
 CREATE TABLE users (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     username TEXT UNIQUE NOT NULL,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
-```
 
-### Messages Table
-```sql
+-- Messages
 CREATE TABLE messages (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     sender TEXT NOT NULL,
@@ -160,10 +218,8 @@ CREATE TABLE messages (
     media_path TEXT,
     timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
 );
-```
 
-### Media Table
-```sql
+-- Media Files
 CREATE TABLE media (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     sender TEXT NOT NULL,
@@ -174,15 +230,50 @@ CREATE TABLE media (
 );
 ```
 
-## 🔐 Security
+## 🔐 Security Features
 
-- **End-to-end encryption** of all messages
-- **Password hashing** using Argon2
-- **Secure key exchange** via libsodium
-- **TLS support** (automatic on cloud platforms)
+- **Message Encryption**: All messages encrypted with libsodium
+- **Secure WebSocket**: Automatic TLS on cloud platforms
+- **Input Validation**: SQL injection prevention
+- **Memory Safety**: Modern C++ practices
 
-## 📁 Project Structure
+## 🌐 Cloud Deployment
 
+### Railway (Recommended)
+✅ **Free tier**: $5/month credit  
+✅ **Auto-scaling**: Built-in  
+✅ **Zero config**: Works out of the box  
+
+### Render
+✅ **Free tier**: 750 hours/month  
+✅ **Custom domains**: Available  
+✅ **Auto-sleep**: After 15 minutes inactive  
+
+### Fly.io
+✅ **Free tier**: 3 shared-cpu VMs  
+✅ **Global deployment**: Multiple regions  
+✅ **CLI deployment**: Fast and efficient  
+
+### Environment Variables
+For production deployment, set:
+```bash
+CONNECT_PORT=9001
+CONNECT_DB_PATH=/app/data/messenger.db
+QT_QPA_PLATFORM=offscreen
+```
+
+## 🔧 Development
+
+### Building Debug Version
+```bash
+# Windows
+build_project.bat debug
+
+# Linux
+./build_project.sh debug
+```
+
+### Project Structure
 ```
 Connect/
 ├── include/                 # Header files
@@ -194,137 +285,68 @@ Connect/
 │   ├── Database.cpp
 │   └── Encryption.cpp
 ├── ui/qt-frontend/          # Qt client
-│   ├── MessengerClient.h
-│   ├── MessengerClient.cpp
-│   ├── ChatWidget.h
-│   ├── ChatWidget.cpp
-│   ├── ContactListWidget.h
-│   ├── ContactListWidget.cpp
-│   └── main_client.cpp
-├── data/                    # Database
-├── certs/                   # SSL certificates
-├── media/uploads/           # Uploaded files
-├── main.cpp                 # Main server file
-├── CMakeLists.txt
-├── vcpkg.json
-├── Dockerfile               # Docker configuration
-├── docker-compose.yml       # Local development
-├── railway.json             # Railway deployment
-├── render.yaml              # Render deployment
-├── fly.toml                 # Fly.io deployment
-├── DEPLOYMENT.md            # Cloud deployment guide
-├── ARCHITECTURE.md          # Architecture documentation
-└── README.md
+├── data/                    # Database files
+├── media/uploads/           # Media storage
+├── start_server.bat         # Windows server shortcut
+├── start_client.bat         # Windows client shortcut
+├── start_server.sh          # Linux server shortcut
+├── build_project.bat        # Windows build script
+├── build_project.sh         # Linux build script
+├── ConnectMessenger.desktop # Linux desktop entry
+├── main.cpp                 # Server entry point
+├── CMakeLists.txt          # Build configuration
+├── Dockerfile              # Container configuration
+├── docker-compose.yml      # Local development
+└── railway.json            # Railway deployment
 ```
 
-## 🌐 Cloud Deployment
+## 🚨 Troubleshooting
 
-### Supported Platforms
+### Build Issues
+1. **Qt not found**: Install Qt6 or Qt5 development packages
+2. **libsodium missing**: Install libsodium-dev
+3. **SQLite errors**: Install libsqlite3-dev
+4. **CMake errors**: Update CMake to 3.10+
 
-#### Railway
-- **Free tier**: $5/month credit
-- **Auto-scaling**: Built-in
-- **Easy deployment**: Connect GitHub repository
+### Runtime Issues
+1. **Port in use**: Change port in start scripts or environment
+2. **Database errors**: Check write permissions to `data/` directory
+3. **Connection refused**: Verify firewall settings
+4. **Qt platform errors**: Set `QT_QPA_PLATFORM=offscreen` for headless
 
-#### Render
-- **Free tier**: 750 hours/month
-- **Custom domains**: Available
-- **Auto-sleep**: After 15 minutes inactive
-
-#### Fly.io
-- **Free tier**: 3 shared-cpu VMs
-- **Global deployment**: Multiple regions
-- **CLI deployment**: Fast and efficient
-
-### Database Options
-
-#### SQLite (Built-in)
-- **Pros**: Simple, no setup required
-- **Cons**: Data lost on restart
-- **Best for**: Testing, small deployments
-
-#### PostgreSQL (Recommended for Production)
-- **Railway PostgreSQL**: Built-in service
-- **Render PostgreSQL**: Built-in service
-- **Supabase**: Free PostgreSQL hosting
-
-For detailed deployment instructions, see [DEPLOYMENT.md](DEPLOYMENT.md).
-
-## 🔧 Configuration
-
-### Environment Variables
-```bash
-CONNECT_PORT=9001              # Server port
-CONNECT_DB_PATH=/app/data/messenger.db  # Database path
-```
-
-### Changing Server Port
-```bash
-.\ConnectServer.exe 8080
-```
-
-### SSL/TLS Configuration
-1. Place certificates in the `certs/` folder
-2. Update server code to use WSS
-3. Cloud platforms provide automatic HTTPS
-
-## 📊 Monitoring
-
-### Health Checks
-- **Endpoint**: `/health`
-- **Response**: `{"status":"healthy","online_users":N}`
-- **Port**: WebSocket port + 1
-
-### Logs
-- **Local**: Console output
-- **Cloud**: Platform-specific logging
-- **Docker**: `docker logs`
-
-## 🐛 Troubleshooting
-
-### Local Development Issues
-1. Make sure Visual Studio 2022 with C++ support is installed
-2. Run from Developer Command Prompt
-3. Check that all dependencies are installed via vcpkg
-
-### Cloud Deployment Issues
-1. Check platform logs
-2. Verify environment variables
-3. Test health check endpoint
-4. Check resource usage
-
-### Connection Issues
-1. Make sure the server is running
-2. Check that port is not occupied
-3. Check firewall settings
-4. Verify WebSocket URL (ws:// vs wss://)
-
-## 📈 Performance
-
-- **Support for up to 1000 users** simultaneously
-- **Fast history operations** thanks to SQLite indexes
-- **Efficient encryption** using libsodium
-- **Minimal memory consumption**
-- **Auto-scaling** on cloud platforms
-
-## 🤝 Contributing
-
-1. Fork the repository
-2. Create a branch for your new feature
-3. Make your changes
-4. Create a Pull Request
-
-## 📄 License
-
-MIT License
+### Railway Deployment Issues
+1. **Build timeout**: Railway builds within 10 minutes
+2. **Memory limits**: Free tier has 512MB RAM limit
+3. **Port binding**: Railway auto-assigns PORT variable
+4. **Health check fails**: Verify `/health` endpoint works
 
 ## 📞 Support
 
-If you encounter problems:
-1. Check this README and DEPLOYMENT.md
-2. Create an Issue in the repository
-3. Check platform-specific documentation
+- **Documentation**: See `ARCHITECTURE.md` and `DEPLOYMENT.md`
+- **Issues**: Open GitHub issues for bug reports
+- **Health Check**: `GET /health` for server status
+
+## 📄 License
+
+This project is open source. See LICENSE file for details.
 
 ---
 
-**Ready for local development and cloud deployment!** 🚀 
+### Quick Commands Reference
+
+```bash
+# Build and start (Windows)
+build_project.bat && start_server.bat
+
+# Build and start (Linux)
+./build_project.sh && ./start_server.sh
+
+# Docker development
+docker-compose up --build
+
+# Test health check
+curl http://localhost:9002/health
+
+# Deploy to Railway
+railway login && railway up
+``` 

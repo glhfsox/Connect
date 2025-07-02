@@ -1,9 +1,11 @@
 #pragma once
 
-#include <SQLiteCpp/SQLiteC++.h>
 #include <string>
 #include <vector>
 #include <memory>
+
+// Forward declaration
+struct sqlite3;
 
 struct Message {
     int id;
@@ -47,7 +49,7 @@ public:
     bool createUser(const std::string& username);
 
 private:
-    std::unique_ptr<SQLite::Database> m_db;
+    sqlite3* m_db;
     std::string m_dbPath;
     
     void createTables();

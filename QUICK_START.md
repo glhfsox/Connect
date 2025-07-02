@@ -1,95 +1,138 @@
-# 🚀 Quick Start - Connect Messenger
+# 🚀 Connect Messenger - Quick Start Guide
 
-## 📋 What to Install
+## Railway Deployment (1-2 minutes)
 
-1. **Visual Studio 2022 Community** (free)
-   - Download: https://visualstudio.microsoft.com/downloads/
-   - Select: "Desktop development with C++"
-   - Include: CMake tools for Visual Studio
+### Option 1: One-Click Deploy
+1. **Fork** this repository on GitHub
+2. Go to [railway.app](https://railway.app) and sign up/login
+3. Click **"New Project"** → **"Deploy from GitHub repo"**
+4. Select your forked **Connect** repository
+5. Wait 3-5 minutes for automatic build and deployment
+6. Your messenger will be live at `https://your-app-name.up.railway.app`
 
-2. **CMake** (if not installed via Visual Studio)
-   - Download: https://cmake.org/download/
-   - Add to PATH during installation
-
-## ⚡ Quick Installation
-
-1. **Clone the repository**
-   ```bash
-   git clone <repository-url>
-   cd Connect
-   ```
-
-2. **Run automatic installation**
-   ```bash
-   .\setup.bat
-   ```
-
-3. **Build the project**
-   ```bash
-   .\build.bat
-   ```
-
-## 🎯 Testing
-
-### Option 1: Qt Client
-1. Start server: `.\build\Release\ConnectServer.exe`
-2. Start client: `.\build\Release\ConnectClient.exe`
-3. Enter username and connect
-
-### Option 2: Web Test
-1. Start server: `.\build\Release\ConnectServer.exe`
-2. Open `test_websocket.html` in browser
-3. Click "Connect" and "Login"
-
-## 🔧 If Something Doesn't Work
-
-### Problem: CMake not found
+### Option 2: Railway CLI
 ```bash
-# Install CMake or run from Developer Command Prompt
-"C:\Program Files\Microsoft Visual Studio\2022\Community\Common7\Tools\VsDevCmd.bat"
+npm install -g @railway/cli
+railway login
+railway link
+railway up
 ```
 
-### Problem: Dependencies not installed
+**That's it!** Your messenger supports:
+- ✅ Real-time WebSocket messaging
+- ✅ Up to 1000 concurrent users
+- ✅ Message history with SQLite
+- ✅ Health checks at `/health`
+- ✅ Automatic HTTPS
+
+## Local Development (5 minutes)
+
+### Windows (Visual Studio)
+1. **Double-click** `build_project.bat` → Wait for build completion
+2. **Double-click** `start_server.bat` → Server starts on port 9001
+3. Test: Open `http://localhost:9002/health` in browser
+
+### Linux (Ubuntu/Debian)
 ```bash
-# Reinstall dependencies
-.\vcpkg\vcpkg.exe install --triplet=x64-windows
+chmod +x build_project.sh start_server.sh
+./build_project.sh
+./start_server.sh
 ```
 
-### Problem: Port occupied
+### Docker (Any OS)
 ```bash
-# Start server on different port
-.\build\Release\ConnectServer.exe 8080
+docker-compose up --build
 ```
 
-## 📱 Main Features
+## Testing Your Deployment
 
-- ✅ **Real-time messages** via WebSocket
-- ✅ **Message history** in SQLite
-- ✅ **Encryption** with libsodium
-- ✅ **Modern UI** on Qt
-- ✅ **System notifications**
-- ✅ **Multimedia support**
+### Health Check
+```bash
+curl https://your-app-name.up.railway.app/health
+# Expected: {"status":"healthy","online_users":0}
+```
 
-## 🎨 Interface
+### WebSocket Connection Test
+```javascript
+const ws = new WebSocket('wss://your-app-name.up.railway.app');
+ws.onopen = () => console.log('Connected to Connect Messenger!');
+ws.send(JSON.stringify({
+    type: "auth",
+    username: "testuser"
+}));
+```
 
-- **Left panel**: Connection and contact list
-- **Right panel**: Chat with selected contact
-- **Buttons**: Send files, voice messages
-- **Tray**: System notifications
+## Client Connection Example
 
-## 🔐 Security
+```javascript
+// Connect to your deployed messenger
+const serverUrl = 'wss://your-app-name.up.railway.app';
+const ws = new WebSocket(serverUrl);
 
-- End-to-end encryption of all messages
-- Secure key exchange
-- Password hashing
+ws.onopen = () => {
+    // Authenticate
+    ws.send(JSON.stringify({
+        type: "auth", 
+        username: "your-username"
+    }));
+};
 
-## 📞 Support
+ws.onmessage = (event) => {
+    const data = JSON.parse(event.data);
+    console.log('Received:', data);
+};
 
-If you have problems:
-1. Check README.md for detailed instructions
-2. Create Issue in repository
-3. Check server logs in console
+// Send a message
+function sendMessage(to, text) {
+    ws.send(JSON.stringify({
+        type: "message",
+        to: to,
+        text: text
+    }));
+}
+```
+
+## Troubleshooting
+
+### Railway Issues
+- **Build fails**: Check build logs in Railway dashboard
+- **App crashes**: Check runtime logs for error messages
+- **Memory limit**: Free tier has 512MB RAM (upgrade if needed)
+
+### Local Issues
+- **Windows**: Install Visual Studio 2022 with C++ tools
+- **Linux**: Run `sudo apt install build-essential cmake qtbase6-dev`
+- **Port busy**: Change port in start scripts
+
+### Quick Fixes
+```bash
+# Check if server is running
+curl http://localhost:9002/health
+
+# Kill process on port 9001 (if stuck)
+# Windows: netstat -ano | findstr :9001
+# Linux: sudo lsof -t -i:9001 | xargs kill -9
+
+# Check Railway logs
+railway logs
+
+# Test WebSocket locally
+wscat -c ws://localhost:9001
+```
+
+## Next Steps
+
+1. **Customize**: Edit server code in `server/` directory
+2. **Client**: Build Qt client with `build_project.bat`/`.sh`
+3. **Database**: SQLite files stored in `data/` directory
+4. **Monitoring**: Use Railway metrics dashboard
+5. **Scale**: Upgrade Railway plan for more resources
 
 ---
 
-**Ready!** 🎉 Your messenger is ready to use. 
+**🎉 Your Connect Messenger is now running!**
+
+- **Railway URL**: `https://your-app-name.up.railway.app`
+- **WebSocket**: `wss://your-app-name.up.railway.app`
+- **Health**: `https://your-app-name.up.railway.app/health`
+- **Local Server**: `http://localhost:9001` (WebSocket) + `http://localhost:9002/health` 

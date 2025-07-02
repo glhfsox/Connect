@@ -6,6 +6,7 @@
 #include <iostream>
 #include <csignal>
 #include <memory>
+#include <cstdlib>
 
 std::unique_ptr<WebSocketServer> g_server;
 
@@ -38,8 +39,12 @@ int main(int argc, char* argv[]) {
     // Create and start WebSocket server
     g_server = std::make_unique<WebSocketServer>();
     
+    // Get port from environment variable or command line
     int port = 9001;
-    if (argc > 1) {
+    const char* env_port = std::getenv("PORT");
+    if (env_port) {
+        port = std::atoi(env_port);
+    } else if (argc > 1) {
         port = std::atoi(argv[1]);
     }
     
@@ -48,7 +53,8 @@ int main(int argc, char* argv[]) {
         return 1;
     }
     
-    std::cout << "Server is running on port " << port << std::endl;
+    std::cout << "WebSocket server is running on port " << port << std::endl;
+    std::cout << "HTTP health check server is running on port " << (port + 1) << std::endl;
     std::cout << "Press Ctrl+C to stop the server" << std::endl;
     
     return app.exec();

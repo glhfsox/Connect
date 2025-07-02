@@ -1,39 +1,51 @@
 #include "../include/Database.h"
 #include <iostream>
 #include <filesystem>
-#include <ctime>
+#include <sqlite3.h>
 
-Database::Database(const std::string& dbPath) : m_dbPath(dbPath) {
-    // Create database directory if it doesn't exist
-    std::filesystem::path path(m_dbPath);
-    std::filesystem::create_directories(path.parent_path());
+Database::Database(const std::string& dbPath) : m_dbPath(dbPath), m_db(nullptr) {
 }
 
-Database::~Database() = default;
+Database::~Database() {
+    if (m_db) {
+        sqlite3_close(m_db);
+    }
+}
 
 bool Database::initialize() {
     try {
-        m_db = std::make_unique<SQLite::Database>(m_dbPath, SQLite::OPEN_READWRITE | SQLite::OPEN_CREATE);
+        // Create data directory if it doesn't exist
+        std::filesystem::path dbDir = std::filesystem::path(m_dbPath).parent_path();
+        if (!dbDir.empty() && !std::filesystem::exists(dbDir)) {
+            std::filesystem::create_directories(dbDir);
+        }
+
+        // Open database
+        int rc = sqlite3_open(m_dbPath.c_str(), &m_db);
+        if (rc != SQLITE_OK) {
+            std::cerr << "Can't open database: " << sqlite3_errmsg(m_db) << std::endl;
+            return false;
+        }
+
         createTables();
+        std::cout << "Database initialized: " << m_dbPath << std::endl;
         return true;
-    } catch (const SQLite::Exception& e) {
-        std::cerr << "Database initialization failed: " << e.what() << std::endl;
+    } catch (const std::exception& e) {
+        std::cerr << "Database initialization error: " << e.what() << std::endl;
         return false;
     }
 }
 
 void Database::createTables() {
-    // Users table
-    m_db->exec(R"(
+    const char* sql_users = R"(
         CREATE TABLE IF NOT EXISTS users (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             username TEXT UNIQUE NOT NULL,
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-        )
-    )");
-    
-    // Messages table
-    m_db->exec(R"(
+        );
+    )";
+
+    const char* sql_messages = R"(
         CREATE TABLE IF NOT EXISTS messages (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             sender TEXT NOT NULL,
@@ -41,170 +53,212 @@ void Database::createTables() {
             text TEXT NOT NULL,
             message_type TEXT DEFAULT 'text',
             media_path TEXT,
-            timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY (sender) REFERENCES users (username),
-            FOREIGN KEY (receiver) REFERENCES users (username)
-        )
-    )");
-    
-    // Media table
-    m_db->exec(R"(
+            timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+        );
+    )";
+
+    const char* sql_media = R"(
         CREATE TABLE IF NOT EXISTS media (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             sender TEXT NOT NULL,
             receiver TEXT NOT NULL,
             path TEXT NOT NULL,
             type TEXT NOT NULL,
-            timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY (sender) REFERENCES users (username),
-            FOREIGN KEY (receiver) REFERENCES users (username)
-        )
-    )");
+            timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+        );
+    )";
+
+    char* errMsg = 0;
     
-    // Indexes for fast search
-    m_db->exec("CREATE INDEX IF NOT EXISTS idx_messages_users ON messages(sender, receiver)");
-    m_db->exec("CREATE INDEX IF NOT EXISTS idx_messages_timestamp ON messages(timestamp)");
-    m_db->exec("CREATE INDEX IF NOT EXISTS idx_media_users ON media(sender, receiver)");
+    if (sqlite3_exec(m_db, sql_users, 0, 0, &errMsg) != SQLITE_OK) {
+        std::cerr << "SQL error creating users table: " << errMsg << std::endl;
+        sqlite3_free(errMsg);
+    }
+    
+    if (sqlite3_exec(m_db, sql_messages, 0, 0, &errMsg) != SQLITE_OK) {
+        std::cerr << "SQL error creating messages table: " << errMsg << std::endl;
+        sqlite3_free(errMsg);
+    }
+    
+    if (sqlite3_exec(m_db, sql_media, 0, 0, &errMsg) != SQLITE_OK) {
+        std::cerr << "SQL error creating media table: " << errMsg << std::endl;
+        sqlite3_free(errMsg);
+    }
 }
 
 bool Database::saveMessage(const std::string& sender, const std::string& receiver, 
                           const std::string& text, const std::string& messageType,
                           const std::string& mediaPath) {
-    try {
-        SQLite::Statement query(*m_db, R"(
-            INSERT INTO messages (sender, receiver, text, message_type, media_path)
-            VALUES (?, ?, ?, ?, ?)
-        )");
-        
-        query.bind(1, sender);
-        query.bind(2, receiver);
-        query.bind(3, text);
-        query.bind(4, messageType);
-        query.bind(5, mediaPath);
-        
-        query.exec();
-        return true;
-    } catch (const SQLite::Exception& e) {
-        std::cerr << "Failed to save message: " << e.what() << std::endl;
+    const char* sql = R"(
+        INSERT INTO messages (sender, receiver, text, message_type, media_path)
+        VALUES (?, ?, ?, ?, ?);
+    )";
+    
+    sqlite3_stmt* stmt;
+    if (sqlite3_prepare_v2(m_db, sql, -1, &stmt, NULL) != SQLITE_OK) {
+        std::cerr << "Failed to prepare statement: " << sqlite3_errmsg(m_db) << std::endl;
         return false;
     }
+    
+    sqlite3_bind_text(stmt, 1, sender.c_str(), -1, SQLITE_STATIC);
+    sqlite3_bind_text(stmt, 2, receiver.c_str(), -1, SQLITE_STATIC);
+    sqlite3_bind_text(stmt, 3, text.c_str(), -1, SQLITE_STATIC);
+    sqlite3_bind_text(stmt, 4, messageType.c_str(), -1, SQLITE_STATIC);
+    sqlite3_bind_text(stmt, 5, mediaPath.c_str(), -1, SQLITE_STATIC);
+    
+    int rc = sqlite3_step(stmt);
+    sqlite3_finalize(stmt);
+    
+    if (rc != SQLITE_DONE) {
+        std::cerr << "Failed to insert message: " << sqlite3_errmsg(m_db) << std::endl;
+        return false;
+    }
+    
+    return true;
 }
 
 std::vector<Message> Database::getMessages(const std::string& user1, const std::string& user2, int limit) {
     std::vector<Message> messages;
     
-    try {
-        SQLite::Statement query(*m_db, R"(
-            SELECT id, sender, receiver, text, message_type, media_path, timestamp
-            FROM messages 
-            WHERE (sender = ? AND receiver = ?) OR (sender = ? AND receiver = ?)
-            ORDER BY timestamp DESC
-            LIMIT ?
-        )");
-        
-        query.bind(1, user1);
-        query.bind(2, user2);
-        query.bind(3, user2);
-        query.bind(4, user1);
-        query.bind(5, limit);
-        
-        while (query.executeStep()) {
-            Message msg;
-            msg.id = query.getColumn(0);
-            msg.sender = query.getColumn(1);
-            msg.receiver = query.getColumn(2);
-            msg.text = query.getColumn(3);
-            msg.messageType = query.getColumn(4);
-            msg.mediaPath = query.getColumn(5);
-            msg.timestamp = query.getColumn(6);
-            
-            messages.push_back(msg);
-        }
-    } catch (const SQLite::Exception& e) {
-        std::cerr << "Failed to get messages: " << e.what() << std::endl;
+    const char* sql = R"(
+        SELECT id, sender, receiver, text, timestamp, message_type, media_path
+        FROM messages 
+        WHERE (sender = ? AND receiver = ?) OR (sender = ? AND receiver = ?)
+        ORDER BY timestamp DESC 
+        LIMIT ?;
+    )";
+    
+    sqlite3_stmt* stmt;
+    if (sqlite3_prepare_v2(m_db, sql, -1, &stmt, NULL) != SQLITE_OK) {
+        std::cerr << "Failed to prepare statement: " << sqlite3_errmsg(m_db) << std::endl;
+        return messages;
     }
     
+    sqlite3_bind_text(stmt, 1, user1.c_str(), -1, SQLITE_STATIC);
+    sqlite3_bind_text(stmt, 2, user2.c_str(), -1, SQLITE_STATIC);
+    sqlite3_bind_text(stmt, 3, user2.c_str(), -1, SQLITE_STATIC);
+    sqlite3_bind_text(stmt, 4, user1.c_str(), -1, SQLITE_STATIC);
+    sqlite3_bind_int(stmt, 5, limit);
+    
+    while (sqlite3_step(stmt) == SQLITE_ROW) {
+        Message msg;
+        msg.id = sqlite3_column_int(stmt, 0);
+        msg.sender = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 1));
+        msg.receiver = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 2));
+        msg.text = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 3));
+        msg.timestamp = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 4));
+        msg.messageType = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 5));
+        msg.mediaPath = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 6));
+        messages.push_back(msg);
+    }
+    
+    sqlite3_finalize(stmt);
     return messages;
 }
 
 bool Database::saveMedia(const std::string& sender, const std::string& receiver,
                         const std::string& path, const std::string& type) {
-    try {
-        SQLite::Statement query(*m_db, R"(
-            INSERT INTO media (sender, receiver, path, type)
-            VALUES (?, ?, ?, ?)
-        )");
-        
-        query.bind(1, sender);
-        query.bind(2, receiver);
-        query.bind(3, path);
-        query.bind(4, type);
-        
-        query.exec();
-        return true;
-    } catch (const SQLite::Exception& e) {
-        std::cerr << "Failed to save media: " << e.what() << std::endl;
+    const char* sql = R"(
+        INSERT INTO media (sender, receiver, path, type)
+        VALUES (?, ?, ?, ?);
+    )";
+    
+    sqlite3_stmt* stmt;
+    if (sqlite3_prepare_v2(m_db, sql, -1, &stmt, NULL) != SQLITE_OK) {
+        std::cerr << "Failed to prepare statement: " << sqlite3_errmsg(m_db) << std::endl;
         return false;
     }
+    
+    sqlite3_bind_text(stmt, 1, sender.c_str(), -1, SQLITE_STATIC);
+    sqlite3_bind_text(stmt, 2, receiver.c_str(), -1, SQLITE_STATIC);
+    sqlite3_bind_text(stmt, 3, path.c_str(), -1, SQLITE_STATIC);
+    sqlite3_bind_text(stmt, 4, type.c_str(), -1, SQLITE_STATIC);
+    
+    int rc = sqlite3_step(stmt);
+    sqlite3_finalize(stmt);
+    
+    if (rc != SQLITE_DONE) {
+        std::cerr << "Failed to insert media: " << sqlite3_errmsg(m_db) << std::endl;
+        return false;
+    }
+    
+    return true;
 }
 
 std::vector<Media> Database::getMedia(const std::string& user1, const std::string& user2) {
     std::vector<Media> media;
     
-    try {
-        SQLite::Statement query(*m_db, R"(
-            SELECT id, sender, receiver, path, type, timestamp
-            FROM media 
-            WHERE (sender = ? AND receiver = ?) OR (sender = ? AND receiver = ?)
-            ORDER BY timestamp DESC
-        )");
-        
-        query.bind(1, user1);
-        query.bind(2, user2);
-        query.bind(3, user2);
-        query.bind(4, user1);
-        
-        while (query.executeStep()) {
-            Media m;
-            m.id = query.getColumn(0);
-            m.sender = query.getColumn(1);
-            m.receiver = query.getColumn(2);
-            m.path = query.getColumn(3);
-            m.type = query.getColumn(4);
-            m.timestamp = query.getColumn(5);
-            
-            media.push_back(m);
-        }
-    } catch (const SQLite::Exception& e) {
-        std::cerr << "Failed to get media: " << e.what() << std::endl;
+    const char* sql = R"(
+        SELECT id, sender, receiver, path, type, timestamp
+        FROM media 
+        WHERE (sender = ? AND receiver = ?) OR (sender = ? AND receiver = ?)
+        ORDER BY timestamp DESC;
+    )";
+    
+    sqlite3_stmt* stmt;
+    if (sqlite3_prepare_v2(m_db, sql, -1, &stmt, NULL) != SQLITE_OK) {
+        std::cerr << "Failed to prepare statement: " << sqlite3_errmsg(m_db) << std::endl;
+        return media;
     }
     
+    sqlite3_bind_text(stmt, 1, user1.c_str(), -1, SQLITE_STATIC);
+    sqlite3_bind_text(stmt, 2, user2.c_str(), -1, SQLITE_STATIC);
+    sqlite3_bind_text(stmt, 3, user2.c_str(), -1, SQLITE_STATIC);
+    sqlite3_bind_text(stmt, 4, user1.c_str(), -1, SQLITE_STATIC);
+    
+    while (sqlite3_step(stmt) == SQLITE_ROW) {
+        Media m;
+        m.id = sqlite3_column_int(stmt, 0);
+        m.sender = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 1));
+        m.receiver = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 2));
+        m.path = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 3));
+        m.type = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 4));
+        m.timestamp = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 5));
+        media.push_back(m);
+    }
+    
+    sqlite3_finalize(stmt);
     return media;
 }
 
 bool Database::userExists(const std::string& username) {
-    try {
-        SQLite::Statement query(*m_db, "SELECT COUNT(*) FROM users WHERE username = ?");
-        query.bind(1, username);
-        
-        if (query.executeStep()) {
-            return query.getColumn(0) > 0;
-        }
-    } catch (const SQLite::Exception& e) {
-        std::cerr << "Failed to check user existence: " << e.what() << std::endl;
+    const char* sql = "SELECT COUNT(*) FROM users WHERE username = ?;";
+    
+    sqlite3_stmt* stmt;
+    if (sqlite3_prepare_v2(m_db, sql, -1, &stmt, NULL) != SQLITE_OK) {
+        std::cerr << "Failed to prepare statement: " << sqlite3_errmsg(m_db) << std::endl;
+        return false;
     }
     
-    return false;
+    sqlite3_bind_text(stmt, 1, username.c_str(), -1, SQLITE_STATIC);
+    
+    bool exists = false;
+    if (sqlite3_step(stmt) == SQLITE_ROW) {
+        exists = sqlite3_column_int(stmt, 0) > 0;
+    }
+    
+    sqlite3_finalize(stmt);
+    return exists;
 }
 
 bool Database::createUser(const std::string& username) {
-    try {
-        SQLite::Statement query(*m_db, "INSERT INTO users (username) VALUES (?)");
-        query.bind(1, username);
-        query.exec();
-        return true;
-    } catch (const SQLite::Exception& e) {
-        std::cerr << "Failed to create user: " << e.what() << std::endl;
+    const char* sql = "INSERT INTO users (username) VALUES (?);";
+    
+    sqlite3_stmt* stmt;
+    if (sqlite3_prepare_v2(m_db, sql, -1, &stmt, NULL) != SQLITE_OK) {
+        std::cerr << "Failed to prepare statement: " << sqlite3_errmsg(m_db) << std::endl;
         return false;
     }
+    
+    sqlite3_bind_text(stmt, 1, username.c_str(), -1, SQLITE_STATIC);
+    
+    int rc = sqlite3_step(stmt);
+    sqlite3_finalize(stmt);
+    
+    if (rc != SQLITE_DONE) {
+        std::cerr << "Failed to create user: " << sqlite3_errmsg(m_db) << std::endl;
+        return false;
+    }
+    
+    return true;
 } 

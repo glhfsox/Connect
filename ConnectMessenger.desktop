@@ -1,0 +1,13 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=Connect Messenger
+Comment=Modern C++ messenger with WebSocket support
+Exec=./ConnectServer
+Icon=connect-messenger
+Terminal=true
+Categories=Network;InstantMessaging;
+StartupNotify=true
+MimeType=
+Path=/app
+Keywords=messenger;chat;communication;websocket; 

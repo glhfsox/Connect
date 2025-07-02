@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Connect Messenger - WebSocket Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 { color: #333; }
+        .status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+            font-weight: bold;
+        }
+        .connected { background-color: #d4edda; color: #155724; }
+        .disconnected { background-color: #f8d7da; color: #721c24; }
+        .waiting { background-color: #fff3cd; color: #856404; }
+        input, button {
+            margin: 5px;
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            cursor: pointer;
+        }
+        button:hover { background-color: #0056b3; }
+        button:disabled {
+            background-color: #6c757d;
+            cursor: not-allowed;
+        }
+        .log {
+            background-color: #f8f9fa;
+            border: 1px solid #e9ecef;
+            padding: 10px;
+            height: 300px;
+            overflow-y: scroll;
+            font-family: monospace;
+            font-size: 12px;
+            white-space: pre-wrap;
+        }
+        .message-form {
+            display: flex;
+            gap: 10px;
+            margin: 10px 0;
+        }
+        .message-form input {
+            flex: 1;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚀 Connect Messenger - WebSocket Test</h1>
+        
+        <div>
+            <label>Server URL:</label>
+            <input type="text" id="serverUrl" value="ws://localhost:9001" style="width: 300px;">
+            <button onclick="connect()">Connect</button>
+            <button onclick="disconnect()" id="disconnectBtn" disabled>Disconnect</button>
+        </div>
+
+        <div id="status" class="status disconnected">Disconnected</div>
+
+        <div>
+            <h3>Authentication</h3>
+            <input type="text" id="username" placeholder="Enter username" value="testuser">
+            <button onclick="authenticate()" id="authBtn" disabled>Login</button>
+        </div>
+
+        <div>
+            <h3>Send Message</h3>
+            <div class="message-form">
+                <input type="text" id="recipient" placeholder="Recipient username" value="user2">
+                <input type="text" id="messageText" placeholder="Your message" value="Hello from WebSocket test!">
+                <button onclick="sendMessage()" id="sendBtn" disabled>Send</button>
+            </div>
+        </div>
+
+        <div>
+            <h3>Actions</h3>
+            <button onclick="requestHistory()" id="historyBtn" disabled>Get History</button>
+            <button onclick="clearLog()">Clear Log</button>
+        </div>
+
+        <div>
+            <h3>Message Log</h3>
+            <div id="log" class="log">Ready to connect...\n</div>
+        </div>
+    </div>
+
+    <script>
+        let socket = null;
+        let isAuthenticated = false;
+
+        function log(message) {
+            const logDiv = document.getElementById('log');
+            const timestamp = new Date().toLocaleTimeString();
+            logDiv.textContent += `[${timestamp}] ${message}\n`;
+            logDiv.scrollTop = logDiv.scrollHeight;
+        }
+
+        function updateStatus(status, className) {
+            const statusDiv = document.getElementById('status');
+            statusDiv.textContent = status;
+            statusDiv.className = `status ${className}`;
+        }
+
+        function updateButtons() {
+            const connected = socket && socket.readyState === WebSocket.OPEN;
+            document.getElementById('disconnectBtn').disabled = !connected;
+            document.getElementById('authBtn').disabled = !connected || isAuthenticated;
+            document.getElementById('sendBtn').disabled = !connected || !isAuthenticated;
+            document.getElementById('historyBtn').disabled = !connected || !isAuthenticated;
+        }
+
+        function connect() {
+            const url = document.getElementById('serverUrl').value;
+            
+            try {
+                updateStatus('Connecting...', 'waiting');
+                log(`Connecting to ${url}...`);
+                
+                socket = new WebSocket(url);
+                
+                socket.onopen = function(event) {
+                    updateStatus('Connected', 'connected');
+                    log('Connected to server successfully!');
+                    isAuthenticated = false;
+                    updateButtons();
+                };
+                
+                socket.onmessage = function(event) {
+                    try {
+                        const data = JSON.parse(event.data);
+                        log(`Received: ${JSON.stringify(data, null, 2)}`);
+                        
+                        if (data.type === 'auth_response' && data.status === 'success') {
+                            isAuthenticated = true;
+                            log('Authentication successful!');
+                            updateButtons();
+                        }
+                    } catch (e) {
+                        log(`Received (raw): ${event.data}`);
+                    }
+                };
+                
+                socket.onclose = function(event) {
+                    updateStatus('Disconnected', 'disconnected');
+                    log(`Connection closed. Code: ${event.code}, Reason: ${event.reason || 'Unknown'}`);
+                    isAuthenticated = false;
+                    updateButtons();
+                };
+                
+                socket.onerror = function(error) {
+                    updateStatus('Connection Error', 'disconnected');
+                    log(`Connection error: ${error.message || 'Unknown error'}`);
+                    isAuthenticated = false;
+                    updateButtons();
+                };
+                
+            } catch (error) {
+                updateStatus('Connection Error', 'disconnected');
+                log(`Failed to create WebSocket: ${error.message}`);
+            }
+        }
+
+        function disconnect() {
+            if (socket) {
+                socket.close();
+                socket = null;
+                isAuthenticated = false;
+                updateButtons();
+                log('Disconnected by user');
+            }
+        }
+
+        function authenticate() {
+            const username = document.getElementById('username').value.trim();
+            if (!username) {
+                alert('Please enter a username');
+                return;
+            }
+
+            const message = {
+                type: "auth",
+                username: username
+            };
+
+            sendJson(message);
+            log(`Authenticating as: ${username}`);
+        }
+
+        function sendMessage() {
+            const recipient = document.getElementById('recipient').value.trim();
+            const text = document.getElementById('messageText').value.trim();
+            
+            if (!recipient || !text) {
+                alert('Please enter both recipient and message');
+                return;
+            }
+
+            const message = {
+                type: "message",
+                to: recipient,
+                text: text
+            };
+
+            sendJson(message);
+            log(`Sending message to ${recipient}: ${text}`);
+        }
+
+        function requestHistory() {
+            const recipient = document.getElementById('recipient').value.trim();
+            if (!recipient) {
+                alert('Please enter a recipient username');
+                return;
+            }
+
+            const message = {
+                type: "history",
+                with: recipient
+            };
+
+            sendJson(message);
+            log(`Requesting message history with: ${recipient}`);
+        }
+
+        function sendJson(obj) {
+            if (socket && socket.readyState === WebSocket.OPEN) {
+                const jsonStr = JSON.stringify(obj);
+                socket.send(jsonStr);
+                log(`Sent: ${jsonStr}`);
+            } else {
+                log('Cannot send: not connected');
+            }
+        }
+
+        function clearLog() {
+            document.getElementById('log').textContent = '';
+        }
+
+        // Health check function
+        async function checkHealth() {
+            try {
+                const url = document.getElementById('serverUrl').value.replace('ws://', 'http://').replace('wss://', 'https://');
+                const healthUrl = url.replace(':9001', ':9002') + '/health';
+                
+                const response = await fetch(healthUrl);
+                const data = await response.json();
+                log(`Health check: ${JSON.stringify(data)}`);
+            } catch (error) {
+                log(`Health check failed: ${error.message}`);
+            }
+        }
+
+        // Auto-update connection status
+        updateButtons();
+        
+        // Check if URL is for Railway/production
+        if (window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
+            const wsUrl = `wss://${window.location.hostname}`;
+            document.getElementById('serverUrl').value = wsUrl;
+            log(`Detected production environment, using: ${wsUrl}`);
+        }
+
+        // Add health check button
+        document.addEventListener('DOMContentLoaded', function() {
+            const actionsDiv = document.querySelector('h3:nth-of-type(3)').nextElementSibling;
+            const healthBtn = document.createElement('button');
+            healthBtn.textContent = 'Health Check';
+            healthBtn.onclick = checkHealth;
+            actionsDiv.appendChild(healthBtn);
+        });
+    </script>
+</body>
+</html> 

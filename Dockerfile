@@ -10,9 +10,14 @@ RUN apt-get update \
         pkg-config \
         libssl-dev \
         libsqlite3-dev \
-        qtbase5-dev \
-        qtwebsockets5-dev \
+        qt6-base-dev \
+        qt6-websockets-dev \
+        qt6-multimedia-dev \
         libsodium-dev \
+        curl \
+        zip \
+        tar \
+        wget \
     || (sleep 10 && apt-get update && apt-get install -y --no-install-recommends \
         build-essential \
         cmake \
@@ -20,9 +25,14 @@ RUN apt-get update \
         pkg-config \
         libssl-dev \
         libsqlite3-dev \
-        qtbase5-dev \
-        qtwebsockets5-dev \
-        libsodium-dev) \
+        qt6-base-dev \
+        qt6-websockets-dev \
+        qt6-multimedia-dev \
+        libsodium-dev \
+        curl \
+        zip \
+        tar \
+        wget) \
     && rm -rf /var/lib/apt/lists/*
 
 # Set working directory
@@ -31,10 +41,10 @@ WORKDIR /app
 # Copy source code
 COPY . .
 
-# Build the project
-RUN mkdir build && cd build \
-    && cmake .. \
-    && make -j$(nproc)
+# Install vcpkg dependencies manually for Qt6
+RUN mkdir -p build && cd build \
+    && cmake .. -DCMAKE_BUILD_TYPE=Release \
+    && make -j$(nproc) ConnectServer
 
 # Runtime stage
 FROM ubuntu:22.04
@@ -44,53 +54,25 @@ RUN apt-get update \
     && apt-get install -y --no-install-recommends \
         libssl3 \
         libsqlite3-0 \
-        libqt5core5a \
-        libqt5network5 \
-        libqt5websockets5 \
+        qt6-base-private-dev \
+        libqt6core6 \
+        libqt6network6 \
+        libqt6websockets6 \
         libsodium23 \
         dbus \
-        libapparmor1 \
-        libb2-1 \
-        libbrotli1 \
-        libdbus-1-3 \
-        libdouble-conversion3 \
-        libexpat1 \
-        libglib2.0-0 \
-        libglib2.0-data \
-        libicu70 \
-        libpcre2-16-0 \
-        libproxy1v5 \
-        libqt5dbus5 \
-        libqt5gui5 \
-        libqt5widgets5 \
-        libxml2 \
-        shared-mime-info \
-        xdg-user-dirs \
+        curl \
+        ca-certificates \
     || (sleep 10 && apt-get update && apt-get install -y --no-install-recommends \
         libssl3 \
         libsqlite3-0 \
-        libqt5core5a \
-        libqt5network5 \
-        libqt5websockets5 \
+        qt6-base-private-dev \
+        libqt6core6 \
+        libqt6network6 \
+        libqt6websockets6 \
         libsodium23 \
         dbus \
-        libapparmor1 \
-        libb2-1 \
-        libbrotli1 \
-        libdbus-1-3 \
-        libdouble-conversion3 \
-        libexpat1 \
-        libglib2.0-0 \
-        libglib2.0-data \
-        libicu70 \
-        libpcre2-16-0 \
-        libproxy1v5 \
-        libqt5dbus5 \
-        libqt5gui5 \
-        libqt5widgets5 \
-        libxml2 \
-        shared-mime-info \
-        xdg-user-dirs) \
+        curl \
+        ca-certificates) \
     && rm -rf /var/lib/apt/lists/*
 
 # Create app user
@@ -102,22 +84,23 @@ WORKDIR /app
 # Copy built executable
 COPY --from=builder /app/build/ConnectServer /app/
 
-# Create data directory
-RUN mkdir -p /app/data && chown -R appuser:appuser /app
+# Create data and media directories
+RUN mkdir -p /app/data /app/media/uploads && chown -R appuser:appuser /app
 
 # Switch to app user
 USER appuser
 
-# Expose port
-EXPOSE 9001
+# Expose ports (WebSocket and HTTP health check)
+EXPOSE 9001 9002
 
 # Set environment variables
 ENV CONNECT_PORT=9001
 ENV CONNECT_DB_PATH=/app/data/messenger.db
+ENV QT_QPA_PLATFORM=offscreen
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD curl -f http://localhost:9001/health || exit 1
+# Health check using the HTTP endpoint on port 9002
+HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
+    CMD curl -f http://localhost:9002/health || exit 1
 
 # Run the server
 CMD ["./ConnectServer"] 

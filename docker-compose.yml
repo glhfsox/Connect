@@ -2,25 +2,42 @@ version: '3.8'
 
 services:
   connect-server:
-    build: .
+    build:
+      context: .
+      dockerfile: Dockerfile
     ports:
-      - "9001:9001"
+      - "9001:9001"  # WebSocket server
+      - "9002:9002"  # HTTP health check
     environment:
       - CONNECT_PORT=9001
       - CONNECT_DB_PATH=/app/data/messenger.db
+      - QT_QPA_PLATFORM=offscreen
     volumes:
       - ./data:/app/data
+      - ./media:/app/media
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:9001/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:9002/health"]
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 40s
+      start_period: 30s
+    networks:
+      - connect-network
 
-  # Optional: Add Redis for session management (future enhancement)
-  # redis:
-  #   image: redis:alpine
-  #   ports:
-  #     - "6379:6379"
-  #   restart: unless-stopped 
+networks:
+  connect-network:
+    driver: bridge
+
+volumes:
+  connect-data:
+    driver: local
+  connect-media:
+    driver: local
+
+# Optional: Add Redis for session management (future enhancement)
+# redis:
+#   image: redis:alpine
+#   ports:
+#     - "6379:6379"
+#   restart: unless-stopped 
