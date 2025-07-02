@@ -2,8 +2,8 @@
 FROM ubuntu:22.04 as builder
 
 # Install dependencies
-RUN apt-get update \
-    && apt-get install -y --no-install-recommends \
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
         build-essential \
         cmake \
         git \
@@ -13,14 +13,11 @@ RUN apt-get update \
         qt6-base-dev \
         qt6-multimedia-dev \
         libsodium-dev \
-        curl \
-        zip \
-        tar \
-        wget \
-        # Qt 6 WebSockets dev пакет в некоторых версиях репозитория называется по-разному,
-        # поэтому пытаемся сначала установить основной вариант, а если он недоступен – fallback.
-        && (apt-get install -y qt6-websockets-dev || apt-get install -y libqt6websockets6-dev) \
-    && rm -rf /var/lib/apt/lists/*
+        curl zip tar wget && \
+    # Qt6 WebSockets dev package can be named differently, try common name and fallback alternative
+    (apt-get install -y --no-install-recommends qt6-websockets-dev || \
+     apt-get install -y --no-install-recommends libqt6websockets6-dev) && \
+    rm -rf /var/lib/apt/lists/*
 
 # Set working directory
 WORKDIR /app
@@ -41,7 +38,6 @@ RUN apt-get update \
     && apt-get install -y --no-install-recommends \
         libssl3 \
         libsqlite3-0 \
-        qt6-base-private-dev \
         libqt6core6 \
         libqt6network6 \
         libqt6websockets6 \
@@ -52,7 +48,6 @@ RUN apt-get update \
     || (sleep 10 && apt-get update && apt-get install -y --no-install-recommends \
         libssl3 \
         libsqlite3-0 \
-        qt6-base-private-dev \
         libqt6core6 \
         libqt6network6 \
         libqt6websockets6 \
