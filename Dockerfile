@@ -1,6 +1,9 @@
 # Multi-stage build for Connect Messenger Server
 FROM ubuntu:22.04 as builder
 
+# Avoid interactive prompts during package installation
+ARG DEBIAN_FRONTEND=noninteractive
+
 # Install dependencies
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
@@ -25,10 +28,9 @@ WORKDIR /app
 # Copy source code
 COPY . .
 
-# Install vcpkg dependencies manually for Qt6
-RUN mkdir -p build && cd build \
-    && cmake .. -DCMAKE_BUILD_TYPE=Release \
-    && make -j$(nproc) ConnectServer
+# Build the server
+RUN cmake -B build -DCMAKE_BUILD_TYPE=Release && \
+    cmake --build build --target ConnectServer -- -j$(nproc)
 
 # Runtime stage
 FROM ubuntu:22.04
@@ -47,13 +49,7 @@ RUN apt-get update && \
         libsodium23 \
         dbus \
         curl \
-        ca-certificates \
-        build-essential \
-        cmake \
-        git \
-        qtbase5-dev \
-        qtbase5-dev-tools \
-        libqt5websockets5-dev && \
+        ca-certificates && \
     rm -rf /var/lib/apt/lists/*
 
 # Create app user

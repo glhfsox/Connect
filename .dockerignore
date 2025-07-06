@@ -1,37 +1,3 @@
-# Git
-.git
-.gitignore
-
-# Build artifacts
-build/
-out/
-.vs/
-
-# Documentation
-*.md
-ARCHITECTURE.md
-QUICK_START.md
-
-# IDE files
-.vscode/
-.idea/
-
-# OS files
-.DS_Store
-Thumbs.db
-
-# Temporary files
-*.tmp
-*.log
-
-# vcpkg (will install dependencies in container)
-vcpkg/
-vcpkg_installed/
-
-# Data (will be mounted as volume)
-data/
-media/
-
 # Certificates (will be mounted as volume)
 certs/
 
@@ -49,10 +15,39 @@ data/
 # Qt UI (not required for server deployment)
 ui/
 
-# Misc
+# Misc build artifacts
 *.o
 *.obj
 *.so
 *.a
-.CMakeCache.txt
-CMakeFiles/ 
+CMakeCache.txt
+CMakeFiles/
+*.cmake
+!CMakeLists.txt
+
+# Git metadata
+.git/
+.gitignore
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Documentation
+*.md
+ARCHITECTURE.md
+QUICK_START.md
+
+# Temporary files
+*.tmp
+*.log
+
+# vcpkg (will install dependencies in container)
+vcpkg/
+vcpkg_installed/ 

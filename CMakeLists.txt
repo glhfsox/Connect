@@ -4,6 +4,9 @@ project(Connect)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+# Enable Qt MOC
+set(CMAKE_AUTOMOC ON)
+
 # Try to find Qt6 first, then fall back to Qt5
 find_package(Qt6 QUIET COMPONENTS Core Network WebSockets)
 if(Qt6_FOUND)
@@ -46,9 +49,10 @@ endif()
 # Try to find OpenSSL
 find_package(OpenSSL QUIET)
 
-# Исходные файлы сервера
+# Исходные файлы сервера (включая заголовочные файлы для MOC)
 set(SERVER_SOURCES
     main.cpp
+    include/WebSocketServer.h
     server/WebSocketServer.cpp
     server/Database.cpp
     server/Encryption.cpp
