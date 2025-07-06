@@ -33,4 +33,26 @@ data/
 media/
 
 # Certificates (will be mounted as volume)
-certs/ 
+certs/
+
+# Build output
+build/
+
+# Vcpkg build caches and downloaded sources
+vcpkg/
+vcpkg_installed/
+
+# Large media & data directories not needed for image build
+media/
+data/
+
+# Qt UI (not required for server deployment)
+ui/
+
+# Misc
+*.o
+*.obj
+*.so
+*.a
+.CMakeCache.txt
+CMakeFiles/ 

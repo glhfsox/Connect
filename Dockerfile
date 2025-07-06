@@ -33,9 +33,12 @@ RUN mkdir -p build && cd build \
 # Runtime stage
 FROM ubuntu:22.04
 
+# Avoid interactive prompts during package installation
+ARG DEBIAN_FRONTEND=noninteractive
+
 # Install runtime dependencies
-RUN apt-get update \
-    && apt-get install -y --no-install-recommends \
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
         libssl3 \
         libsqlite3-0 \
         libqt6core6 \
@@ -45,17 +48,13 @@ RUN apt-get update \
         dbus \
         curl \
         ca-certificates \
-    || (sleep 10 && apt-get update && apt-get install -y --no-install-recommends \
-        libssl3 \
-        libsqlite3-0 \
-        libqt6core6 \
-        libqt6network6 \
-        libqt6websockets6 \
-        libsodium23 \
-        dbus \
-        curl \
-        ca-certificates) \
-    && rm -rf /var/lib/apt/lists/*
+        build-essential \
+        cmake \
+        git \
+        qtbase5-dev \
+        qtbase5-dev-tools \
+        libqt5websockets5-dev && \
+    rm -rf /var/lib/apt/lists/*
 
 # Create app user
 RUN useradd -m -u 1000 appuser
@@ -79,6 +78,7 @@ EXPOSE 9001 9002
 ENV CONNECT_PORT=9001
 ENV CONNECT_DB_PATH=/app/data/messenger.db
 ENV QT_QPA_PLATFORM=offscreen
+ENV PORT=9001
 
 # Health check using the HTTP endpoint on port 9002
 HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
