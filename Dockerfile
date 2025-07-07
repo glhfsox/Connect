@@ -67,8 +67,8 @@ RUN mkdir -p /app/data /app/media/uploads && chown -R appuser:appuser /app
 # Switch to app user
 USER appuser
 
-# Expose port (WebSocket and HTTP health check on same port)
-EXPOSE 9001
+# Expose ports (WebSocket and HTTP health check)
+EXPOSE 9001 9002
 
 # Set environment variables
 ENV CONNECT_PORT=9001
@@ -76,9 +76,9 @@ ENV CONNECT_DB_PATH=/app/data/messenger.db
 ENV QT_QPA_PLATFORM=offscreen
 ENV PORT=9001
 
-# Health check using the HTTP endpoint on the same port
+# Health check using the HTTP endpoint on port 9002
 HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
-    CMD curl -f http://localhost:9001/health || exit 1
+    CMD curl -f http://localhost:9002/health || exit 1
 
 # Run the server
 CMD ["./ConnectServer"] 
