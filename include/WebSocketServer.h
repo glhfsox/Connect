@@ -23,7 +23,7 @@ private slots:
     void onNewConnection();
     void onTextMessageReceived(const QString& message);
     void onDisconnected();
-    void onHttpRequest();
+    void onTcpConnection();
 
 private:
     void handleMessage(QWebSocket* client, const QString& message);

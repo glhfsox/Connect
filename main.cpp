@@ -53,8 +53,7 @@ int main(int argc, char* argv[]) {
         return 1;
     }
     
-    std::cout << "WebSocket server is running on port " << port << std::endl;
-    std::cout << "HTTP health check server is running on port " << (port + 1) << std::endl;
+    std::cout << "Server is running on port " << port << " (WebSocket + HTTP /health)" << std::endl;
     std::cout << "Press Ctrl+C to stop the server" << std::endl;
     
     return app.exec();

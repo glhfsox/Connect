@@ -16,7 +16,7 @@ WebSocketServer::WebSocketServer(QObject* parent)
     , m_httpServer(new QTcpServer(this))
 {
     connect(m_server.get(), &QWebSocketServer::newConnection, this, &WebSocketServer::onNewConnection);
-    connect(m_httpServer.get(), &QTcpServer::newConnection, this, &WebSocketServer::onHttpRequest);
+    connect(m_httpServer.get(), &QTcpServer::newConnection, this, &WebSocketServer::onTcpConnection);
 }
 
 WebSocketServer::~WebSocketServer() {
@@ -24,21 +24,14 @@ WebSocketServer::~WebSocketServer() {
 }
 
 bool WebSocketServer::start(int port) {
-    // Start WebSocket server
-    if (!m_server->listen(QHostAddress::Any, port)) {
-        std::cerr << "Failed to start WebSocket server: " << m_server->errorString().toStdString() << std::endl;
+    // Start a single TCP server that will handle both WebSocket upgrades and HTTP requests.
+    if (!m_httpServer->listen(QHostAddress::Any, port)) {
+        std::cerr << "Failed to start TCP listener: " << m_httpServer->errorString().toStdString() << std::endl;
         return false;
     }
-    
-    // Start HTTP server for health checks on port + 1
-    if (!m_httpServer->listen(QHostAddress::Any, port + 1)) {
-        std::cerr << "Failed to start HTTP server: " << m_httpServer->errorString().toStdString() << std::endl;
-        return false;
-    }
-    
+
     m_running = true;
-    std::cout << "WebSocket server started on port " << port << std::endl;
-    std::cout << "HTTP health check server started on port " << (port + 1) << std::endl;
+    std::cout << "Server listening (WebSocket+HTTP) on port " << port << std::endl;
     return true;
 }
 
@@ -64,51 +57,66 @@ void WebSocketServer::onNewConnection() {
     std::cout << "New WebSocket connection established" << std::endl;
 }
 
-void WebSocketServer::onHttpRequest() {
+void WebSocketServer::onTcpConnection() {
     QTcpSocket* socket = m_httpServer->nextPendingConnection();
-    
-    connect(socket, &QTcpSocket::readyRead, [this, socket]() {
-        QByteArray request = socket->readAll();
-        handleHttpRequest(socket, request);
-    });
-    
-    connect(socket, &QTcpSocket::disconnected, socket, &QTcpSocket::deleteLater);
-}
 
-void WebSocketServer::handleHttpRequest(QTcpSocket* socket, const QByteArray& request) {
-    QString requestStr = QString::fromUtf8(request);
-    
-    if (requestStr.startsWith("GET /health")) {
-        // Health check endpoint
-        QString response = "HTTP/1.1 200 OK\r\n"
-                          "Content-Type: application/json\r\n"
-                          "Content-Length: 45\r\n"
-                          "\r\n"
-                          "{\"status\":\"healthy\",\"online_users\":" + 
-                          QString::number(m_onlineUsers.size()) + "}";
-        
-        socket->write(response.toUtf8());
-    } else if (requestStr.startsWith("GET /")) {
-        // Root endpoint
-        QString response = "HTTP/1.1 200 OK\r\n"
-                          "Content-Type: text/html\r\n"
-                          "Content-Length: 89\r\n"
-                          "\r\n"
-                          "<html><body><h1>Connect Messenger Server</h1><p>Server is running</p></body></html>";
-        
-        socket->write(response.toUtf8());
-    } else {
-        // 404 Not Found
-        QString response = "HTTP/1.1 404 Not Found\r\n"
-                          "Content-Type: text/plain\r\n"
-                          "Content-Length: 13\r\n"
-                          "\r\n"
-                          "Not Found";
-        
-        socket->write(response.toUtf8());
-    }
-    
-    socket->disconnectFromHost();
+    // Handle the very first data chunk to decide if this is a plain HTTP request or a WebSocket upgrade.
+    connect(socket, &QTcpSocket::readyRead, this, [this, socket]() {
+        if (!socket->bytesAvailable()) {
+            return;
+        }
+
+        // Peek so we do not consume bytes in case we hand over the socket to the WebSocket server.
+        QByteArray data = socket->peek(2048);
+        QString requestStr = QString::fromUtf8(data);
+
+        // Health-check endpoint.
+        if (requestStr.startsWith("GET /health")) {
+            // Consume the request.
+            socket->readAll();
+            QString body = QStringLiteral("{\"status\":\"healthy\",\"online_users\":%1}").arg(m_onlineUsers.size());
+            QByteArray response = "HTTP/1.1 200 OK\r\n"
+                                   "Content-Type: application/json\r\n" +
+                                   QByteArray("Content-Length: ") + QByteArray::number(body.toUtf8().size()) + "\r\n\r\n" +
+                                   body.toUtf8();
+            socket->write(response);
+            socket->disconnectFromHost();
+            return;
+        }
+
+        // Simple root page.
+        if (requestStr.startsWith("GET / ")) {
+            socket->readAll();
+            const QByteArray html = "<html><body><h1>Connect Messenger Server</h1><p>Server is running</p></body></html>";
+            QByteArray response = "HTTP/1.1 200 OK\r\n"
+                                   "Content-Type: text/html\r\n" +
+                                   QByteArray("Content-Length: ") + QByteArray::number(html.size()) + "\r\n\r\n" +
+                                   html;
+            socket->write(response);
+            socket->disconnectFromHost();
+            return;
+        }
+
+        // If it contains an Upgrade header assume it is a WebSocket handshake, delegate.
+        if (requestStr.contains("Upgrade: websocket", Qt::CaseInsensitive)) {
+            // Disconnect the lambda to avoid re-entry after handing over.
+            socket->disconnect();
+            m_server->handleConnection(socket);  // QWebSocketServer takes ownership.
+            return;
+        }
+
+        // Any other HTTP request -> 404
+        socket->readAll();
+        const QByteArray notFound = "Not Found";
+        QByteArray response = "HTTP/1.1 404 Not Found\r\n"
+                               "Content-Type: text/plain\r\n" +
+                               QByteArray("Content-Length: ") + QByteArray::number(notFound.size()) + "\r\n\r\n" +
+                               notFound;
+        socket->write(response);
+        socket->disconnectFromHost();
+    });
+
+    connect(socket, &QTcpSocket::disconnected, socket, &QTcpSocket::deleteLater);
 }
 
 void WebSocketServer::onTextMessageReceived(const QString& message) {
