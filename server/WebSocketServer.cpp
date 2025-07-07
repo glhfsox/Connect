@@ -29,15 +29,15 @@ bool WebSocketServer::start(int port) {
         return false;
     }
     
-    // Start HTTP server for health checks on port + 1
-    if (!m_httpServer->listen(QHostAddress::Any, port + 1)) {
+    // Start HTTP server for health checks on the same port
+    if (!m_httpServer->listen(QHostAddress::Any, port)) {
         std::cerr << "Failed to start HTTP server: " << m_httpServer->errorString().toStdString() << std::endl;
         return false;
     }
     
     m_running = true;
     std::cout << "WebSocket server started on port " << port << std::endl;
-    std::cout << "HTTP health check server started on port " << (port + 1) << std::endl;
+    std::cout << "HTTP health check server started on port " << port << std::endl;
     return true;
 }
 
@@ -68,6 +68,16 @@ void WebSocketServer::onHttpRequest() {
     
     connect(socket, &QTcpSocket::readyRead, [this, socket]() {
         QByteArray request = socket->readAll();
+        
+        // Check if this is a WebSocket upgrade request
+        QString requestStr = QString::fromUtf8(request);
+        if (requestStr.contains("Upgrade: websocket", Qt::CaseInsensitive)) {
+            // This is a WebSocket request, let the WebSocket server handle it
+            socket->close();
+            return;
+        }
+        
+        // This is a regular HTTP request
         handleHttpRequest(socket, request);
     });
     

@@ -8,7 +8,7 @@ if %ERRORLEVEL% EQU 0 (
     echo ✅ Build successful!
     
     echo 🚀 Testing container startup...
-    docker run --rm -d --name connect-test-container -p 9001:9001 -p 9002:9002 connect-test
+    docker run --rm -d --name connect-test-container -p 9001:9001 connect-test
     
     if %ERRORLEVEL% EQU 0 (
         echo ✅ Container started successfully!
@@ -17,7 +17,7 @@ if %ERRORLEVEL% EQU 0 (
         timeout /t 3 /nobreak >nul
         
         echo 🏥 Testing health check...
-        curl -f http://localhost:9002/health
+        curl -f http://localhost:9001/health
         
         if %ERRORLEVEL% EQU 0 (
             echo ✅ Health check passed!
