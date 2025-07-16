@@ -29,7 +29,8 @@ WORKDIR /app
 COPY . .
 
 # Build the server (server-only version)
-RUN cmake -B build -DCMAKE_BUILD_TYPE=Release -f ../CMakeLists_server.txt && \
+RUN cp CMakeLists_server.txt CMakeLists.txt && \
+    cmake -S . -B build -DCMAKE_BUILD_TYPE=Release && \
     cmake --build build --target ConnectServer -- -j$(nproc)
 
 # Runtime stage
