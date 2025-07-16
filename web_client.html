@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Connect Messenger - Web Client</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .messenger-container {
+            width: 90%;
+            max-width: 1200px;
+            height: 90vh;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            display: flex;
+            overflow: hidden;
+        }
+
+        .sidebar {
+            width: 300px;
+            background: #f8f9fa;
+            border-right: 1px solid #e9ecef;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .header {
+            padding: 20px;
+            background: #007bff;
+            color: white;
+            text-align: center;
+        }
+
+        .connection-panel {
+            padding: 20px;
+            border-bottom: 1px solid #e9ecef;
+        }
+
+        .connection-panel input {
+            width: 100%;
+            padding: 10px;
+            margin: 5px 0;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+
+        .connection-panel button {
+            width: 100%;
+            padding: 10px;
+            margin: 5px 0;
+            background: #28a745;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+
+        .connection-panel button:hover {
+            background: #218838;
+        }
+
+        .connection-panel button:disabled {
+            background: #6c757d;
+            cursor: not-allowed;
+        }
+
+        .contacts-panel {
+            flex: 1;
+            padding: 20px;
+        }
+
+        .contact-item {
+            padding: 10px;
+            margin: 5px 0;
+            background: white;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+
+        .contact-item:hover {
+            background: #e9ecef;
+        }
+
+        .contact-item.active {
+            background: #007bff;
+            color: white;
+        }
+
+        .chat-area {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .chat-header {
+            padding: 20px;
+            background: #f8f9fa;
+            border-bottom: 1px solid #e9ecef;
+            font-weight: bold;
+        }
+
+        .messages-container {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+            background: #f8f9fa;
+        }
+
+        .message {
+            margin: 10px 0;
+            padding: 10px 15px;
+            border-radius: 15px;
+            max-width: 70%;
+            word-wrap: break-word;
+        }
+
+        .message.own {
+            background: #007bff;
+            color: white;
+            margin-left: auto;
+        }
+
+        .message.other {
+            background: white;
+            border: 1px solid #e9ecef;
+        }
+
+        .message-time {
+            font-size: 0.8em;
+            opacity: 0.7;
+            margin-top: 5px;
+        }
+
+        .input-area {
+            padding: 20px;
+            background: white;
+            border-top: 1px solid #e9ecef;
+            display: flex;
+            gap: 10px;
+        }
+
+        .input-area input {
+            flex: 1;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+
+        .input-area button {
+            padding: 10px 20px;
+            background: #007bff;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        .input-area button:hover {
+            background: #0056b3;
+        }
+
+        .status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 5px;
+            text-align: center;
+            font-weight: bold;
+        }
+
+        .status.connected {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .status.disconnected {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .status.connecting {
+            background: #fff3cd;
+            color: #856404;
+        }
+
+        .hidden {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="messenger-container">
+        <div class="sidebar">
+            <div class="header">
+                <h2>🚀 Connect Messenger</h2>
+                <p>Web Client</p>
+            </div>
+
+            <div class="connection-panel">
+                <input type="text" id="serverUrl" placeholder="Server URL" value="ws://localhost:9001">
+                <input type="text" id="username" placeholder="Your username">
+                <button id="connectBtn" onclick="connectToServer()">Connect</button>
+                <button id="loginBtn" onclick="login()" disabled>Login</button>
+                <div id="status" class="status disconnected">Disconnected</div>
+            </div>
+
+            <div class="contacts-panel">
+                <h3>Contacts</h3>
+                <div id="contactsList"></div>
+            </div>
+        </div>
+
+        <div class="chat-area">
+            <div class="chat-header" id="chatHeader">
+                Select a contact to start chatting
+            </div>
+
+            <div class="messages-container" id="messagesContainer">
+                <div style="text-align: center; color: #6c757d; margin-top: 50px;">
+                    Welcome to Connect Messenger!<br>
+                    Connect to server and select a contact to start chatting.
+                </div>
+            </div>
+
+            <div class="input-area">
+                <input type="text" id="messageInput" placeholder="Type your message..." disabled>
+                <button onclick="sendMessage()" disabled id="sendBtn">Send</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let socket = null;
+        let isConnected = false;
+        let isAuthenticated = false;
+        let currentUser = '';
+        let currentContact = '';
+        let contacts = new Set();
+
+        function updateStatus(status, className) {
+            const statusDiv = document.getElementById('status');
+            statusDiv.textContent = status;
+            statusDiv.className = `status ${className}`;
+        }
+
+        function updateButtons() {
+            document.getElementById('loginBtn').disabled = !isConnected || isAuthenticated;
+            document.getElementById('messageInput').disabled = !isAuthenticated || !currentContact;
+            document.getElementById('sendBtn').disabled = !isAuthenticated || !currentContact;
+        }
+
+        function connectToServer() {
+            const serverUrl = document.getElementById('serverUrl').value;
+            const username = document.getElementById('username').value.trim();
+
+            if (!username) {
+                alert('Please enter a username');
+                return;
+            }
+
+            currentUser = username;
+            updateStatus('Connecting...', 'connecting');
+
+            try {
+                socket = new WebSocket(serverUrl);
+
+                socket.onopen = function() {
+                    isConnected = true;
+                    updateStatus('Connected', 'connected');
+                    updateButtons();
+                };
+
+                socket.onmessage = function(event) {
+                    handleMessage(JSON.parse(event.data));
+                };
+
+                socket.onclose = function() {
+                    isConnected = false;
+                    isAuthenticated = false;
+                    updateStatus('Disconnected', 'disconnected');
+                    updateButtons();
+                };
+
+                socket.onerror = function(error) {
+                    updateStatus('Connection Error', 'disconnected');
+                    console.error('WebSocket error:', error);
+                };
+
+            } catch (error) {
+                updateStatus('Connection Failed', 'disconnected');
+                console.error('Connection error:', error);
+            }
+        }
+
+        function login() {
+            if (!socket || socket.readyState !== WebSocket.OPEN) {
+                return;
+            }
+
+            const message = {
+                type: "auth",
+                username: currentUser
+            };
+
+            socket.send(JSON.stringify(message));
+        }
+
+        function handleMessage(data) {
+            console.log('Received:', data);
+
+            switch (data.type) {
+                case 'auth_response':
+                    if (data.status === 'success') {
+                        isAuthenticated = true;
+                        updateStatus('Authenticated', 'connected');
+                        updateButtons();
+                        
+                        // Add demo contacts
+                        addContact('Alice');
+                        addContact('Bob');
+                        addContact('Charlie');
+                    } else {
+                        alert('Authentication failed: ' + data.message);
+                    }
+                    break;
+
+                case 'message':
+                    const from = data.from;
+                    const text = data.text;
+                    const timestamp = new Date(data.timestamp * 1000);
+
+                    addContact(from);
+                    addMessage(from, text, timestamp, false);
+
+                    if (from !== currentContact) {
+                        // Show notification for new message
+                        if (Notification.permission === 'granted') {
+                            new Notification(`New message from ${from}`, { body: text });
+                        }
+                    }
+                    break;
+
+                case 'history':
+                    clearMessages();
+                    const messages = data.messages || [];
+                    messages.forEach(msg => {
+                        const timestamp = new Date(msg.timestamp);
+                        const isOwn = msg.sender === currentUser;
+                        addMessage(msg.sender, msg.text, timestamp, isOwn);
+                    });
+                    break;
+
+                case 'message_ack':
+                    // Message sent successfully
+                    break;
+
+                case 'error':
+                    alert('Server error: ' + data.message);
+                    break;
+            }
+        }
+
+        function addContact(contact) {
+            if (contacts.has(contact) || contact === currentUser) {
+                return;
+            }
+
+            contacts.add(contact);
+            const contactsList = document.getElementById('contactsList');
+            const contactDiv = document.createElement('div');
+            contactDiv.className = 'contact-item';
+            contactDiv.textContent = contact;
+            contactDiv.onclick = () => selectContact(contact);
+            contactsList.appendChild(contactDiv);
+        }
+
+        function selectContact(contact) {
+            currentContact = contact;
+            
+            // Update active contact
+            document.querySelectorAll('.contact-item').forEach(item => {
+                item.classList.remove('active');
+            });
+            event.target.classList.add('active');
+
+            // Update chat header
+            document.getElementById('chatHeader').textContent = `Chat with ${contact}`;
+
+            // Request message history
+            if (isAuthenticated) {
+                const message = {
+                    type: "history",
+                    with: contact
+                };
+                socket.send(JSON.stringify(message));
+            }
+
+            updateButtons();
+        }
+
+        function sendMessage() {
+            const messageInput = document.getElementById('messageInput');
+            const text = messageInput.value.trim();
+
+            if (!text || !currentContact || !isAuthenticated) {
+                return;
+            }
+
+            const message = {
+                type: "message",
+                to: currentContact,
+                text: text
+            };
+
+            socket.send(JSON.stringify(message));
+            
+            // Add own message to chat
+            addMessage(currentUser, text, new Date(), true);
+            
+            messageInput.value = '';
+        }
+
+        function addMessage(sender, text, timestamp, isOwn) {
+            const messagesContainer = document.getElementById('messagesContainer');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${isOwn ? 'own' : 'other'}`;
+            
+            const senderSpan = document.createElement('div');
+            senderSpan.style.fontWeight = 'bold';
+            senderSpan.textContent = sender;
+            
+            const textDiv = document.createElement('div');
+            textDiv.textContent = text;
+            
+            const timeDiv = document.createElement('div');
+            timeDiv.className = 'message-time';
+            timeDiv.textContent = timestamp.toLocaleTimeString();
+            
+            messageDiv.appendChild(senderSpan);
+            messageDiv.appendChild(textDiv);
+            messageDiv.appendChild(timeDiv);
+            
+            messagesContainer.appendChild(messageDiv);
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        }
+
+        function clearMessages() {
+            const messagesContainer = document.getElementById('messagesContainer');
+            messagesContainer.innerHTML = '';
+        }
+
+        // Handle Enter key in message input
+        document.getElementById('messageInput').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                sendMessage();
+            }
+        });
+
+        // Request notification permission
+        if ('Notification' in window) {
+            Notification.requestPermission();
+        }
+
+        // Auto-detect Railway URL
+        if (window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
+            const wsUrl = `wss://${window.location.hostname}`;
+            document.getElementById('serverUrl').value = wsUrl;
+        }
+    </script>
+</body>
+</html> 

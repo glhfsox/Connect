@@ -71,6 +71,7 @@ private:
     QWebSocket* m_webSocket;
     QString m_currentUser;
     QString m_currentContact;
+    QString m_lastSentText;
     bool m_authenticated = false;
 
     // Медиа

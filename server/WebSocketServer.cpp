@@ -8,6 +8,7 @@
 #include <QTcpSocket>
 #include <QTcpServer>
 #include <QHostAddress>
+#include <QFile>
 #include <iostream>
 
 WebSocketServer::WebSocketServer(QObject* parent)
@@ -84,10 +85,41 @@ void WebSocketServer::onTcpConnection() {
             return;
         }
 
-        // Simple root page.
-        if (requestStr.startsWith("GET / ")) {
+        // Serve web client
+        if (requestStr.startsWith("GET / ") || requestStr.startsWith("GET /index.html")) {
             socket->readAll();
-            const QByteArray html = "<html><body><h1>Connect Messenger Server</h1><p>Server is running</p></body></html>";
+            
+            // Read web_client.html file
+            QFile file("../web_client.html");
+            QByteArray html;
+            if (file.open(QIODevice::ReadOnly)) {
+                html = file.readAll();
+            } else {
+                // Fallback HTML if file not found
+                html = R"(<html><body><h1>Connect Messenger Server</h1><p>Server is running</p><p><a href="/client">Web Client</a></p></body></html>)";
+            }
+            
+            QByteArray response = "HTTP/1.1 200 OK\r\n"
+                                   "Content-Type: text/html\r\n" +
+                                   QByteArray("Content-Length: ") + QByteArray::number(html.size()) + "\r\n\r\n" +
+                                   html;
+            socket->write(response);
+            socket->disconnectFromHost();
+            return;
+        }
+        
+        // Serve web client at /client endpoint
+        if (requestStr.startsWith("GET /client")) {
+            socket->readAll();
+            
+            QFile file("../web_client.html");
+            QByteArray html;
+            if (file.open(QIODevice::ReadOnly)) {
+                html = file.readAll();
+            } else {
+                html = "<html><body><h1>Web Client Not Found</h1></body></html>";
+            }
+            
             QByteArray response = "HTTP/1.1 200 OK\r\n"
                                    "Content-Type: text/html\r\n" +
                                    QByteArray("Content-Length: ") + QByteArray::number(html.size()) + "\r\n\r\n" +

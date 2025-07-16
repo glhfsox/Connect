@@ -62,18 +62,21 @@ The server will automatically:
 #### Windows
 1. Double-click `build_project.bat` to build the project
 2. Double-click `start_server.bat` to start the server
-3. Double-click `start_client.bat` to start the client (if available)
+3. Double-click `start_client.bat` to start the client
 
 #### Linux
 ```bash
 # Make scripts executable
-chmod +x build_project.sh start_server.sh
+chmod +x build_project.sh start_server.sh start_client.sh
 
 # Build the project
 ./build_project.sh
 
 # Start the server
 ./start_server.sh
+
+# Start the client (in another terminal)
+./start_client.sh
 ```
 
 ### Manual Build

@@ -28,8 +28,8 @@ WORKDIR /app
 # Copy source code
 COPY . .
 
-# Build the server
-RUN cmake -B build -DCMAKE_BUILD_TYPE=Release && \
+# Build the server (server-only version)
+RUN cmake -B build -DCMAKE_BUILD_TYPE=Release -f ../CMakeLists_server.txt && \
     cmake --build build --target ConnectServer -- -j$(nproc)
 
 # Runtime stage
@@ -38,7 +38,7 @@ FROM ubuntu:22.04
 # Avoid interactive prompts during package installation
 ARG DEBIAN_FRONTEND=noninteractive
 
-# Install runtime dependencies
+# Install runtime dependencies (server-only)
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
         libssl3 \
@@ -47,7 +47,6 @@ RUN apt-get update && \
         libqt6network6 \
         libqt6websockets6 \
         libsodium23 \
-        dbus \
         curl \
         ca-certificates && \
     rm -rf /var/lib/apt/lists/*
@@ -58,8 +57,9 @@ RUN useradd -m -u 1000 appuser
 # Set working directory
 WORKDIR /app
 
-# Copy built executable
+# Copy built executable and web client
 COPY --from=builder /app/build/ConnectServer /app/
+COPY --from=builder /app/web_client.html /app/
 
 # Create data and media directories
 RUN mkdir -p /app/data /app/media/uploads && chown -R appuser:appuser /app

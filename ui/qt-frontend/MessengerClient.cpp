@@ -203,10 +203,13 @@ void MessengerClient::onMessageReceived(const QString& message) {
             m_loginButton->setText("Logged In");
             m_loginButton->setEnabled(false);
             
-            // Load contacts (for demo, add some dummy contacts)
-            m_contactList->addContact("Alice");
-            m_contactList->addContact("Bob");
-            m_contactList->addContact("Charlie");
+                    // Load contacts (for demo, add some dummy contacts)
+        m_contactList->addContact("Alice");
+        m_contactList->addContact("Bob");
+        m_contactList->addContact("Charlie");
+        
+        // Load settings
+        loadSettings();
             
             m_trayIcon->showMessage("Connect Messenger", "Successfully logged in", QSystemTrayIcon::Information, 2000);
         } else {
@@ -244,7 +247,10 @@ void MessengerClient::onMessageReceived(const QString& message) {
     }
     else if (type == "message_ack") {
         // Message sent successfully
-        m_chatWidget->messageSent();
+        // Add own message to chat
+        if (!m_currentContact.isEmpty()) {
+            m_chatWidget->addMessage(m_usernameInput->text(), m_lastSentText, QDateTime::currentDateTime(), true);
+        }
     }
     else if (type == "error") {
         QMessageBox::warning(this, "Server Error", j["message"].toString());
@@ -261,7 +267,7 @@ void MessengerClient::onError(QAbstractSocket::SocketError error) {
 
 void MessengerClient::onContactSelected(const QString& contact) {
     m_currentContact = contact;
-    m_chatWidget->clearMessages();
+    m_chatWidget->clearChat();
     m_chatWidget->setCurrentContact(contact);
     
     // Request message history
@@ -286,6 +292,9 @@ void MessengerClient::sendMessage(const QString& text) {
     };
     
     sendJsonMessage(message);
+    
+    // Store text for acknowledgment
+    m_lastSentText = text;
 }
 
 void MessengerClient::sendJsonMessage(const QJsonObject& message) {

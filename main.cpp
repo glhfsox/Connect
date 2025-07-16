@@ -44,8 +44,18 @@ int main(int argc, char* argv[]) {
     const char* env_port = std::getenv("PORT");
     if (env_port) {
         port = std::atoi(env_port);
-    } else if (argc > 1) {
-        port = std::atoi(argv[1]);
+        std::cout << "Using PORT from environment: " << port << std::endl;
+    } else {
+        const char* connect_port = std::getenv("CONNECT_PORT");
+        if (connect_port) {
+            port = std::atoi(connect_port);
+            std::cout << "Using CONNECT_PORT from environment: " << port << std::endl;
+        } else if (argc > 1) {
+            port = std::atoi(argv[1]);
+            std::cout << "Using port from command line: " << port << std::endl;
+        } else {
+            std::cout << "Using default port: " << port << std::endl;
+        }
     }
     
     if (!g_server->start(port)) {

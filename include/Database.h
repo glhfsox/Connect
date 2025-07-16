@@ -14,7 +14,7 @@ struct Message {
     std::string text;
     std::string timestamp;
     std::string messageType; // "text", "image", "video", "voice"
-    std::string mediaPath;   // путь к медиафайлу, если есть
+    std::string mediaPath;  
 };
 
 struct Media {

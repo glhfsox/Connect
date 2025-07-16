@@ -1,5 +1,5 @@
-﻿cmake_minimum_required(VERSION 3.10)
-project(Connect)
+cmake_minimum_required(VERSION 3.10)
+project(ConnectServer)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -7,17 +7,8 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 # Enable Qt MOC
 set(CMAKE_AUTOMOC ON)
 
-# Try to find Qt6 first, then fall back to Qt5
-find_package(Qt6 QUIET COMPONENTS Core Network WebSockets)
-if(Qt6_FOUND)
-    find_package(Qt6 REQUIRED COMPONENTS Core Network WebSockets)
-    set(QT_VERSION_MAJOR 6)
-    message(STATUS "Using Qt6")
-else()
-    find_package(Qt5 REQUIRED COMPONENTS Core Network WebSockets)
-    set(QT_VERSION_MAJOR 5)
-    message(STATUS "Using Qt5")
-endif()
+# Find Qt6 Core and Network only (no GUI)
+find_package(Qt6 REQUIRED COMPONENTS Core Network WebSockets)
 
 # Try to find other dependencies
 find_package(PkgConfig)
@@ -49,7 +40,7 @@ endif()
 # Try to find OpenSSL
 find_package(OpenSSL QUIET)
 
-# Исходные файлы сервера (включая заголовочные файлы для MOC)
+# Server sources only
 set(SERVER_SOURCES
     main.cpp
     include/WebSocketServer.h
@@ -58,7 +49,7 @@ set(SERVER_SOURCES
     server/Encryption.cpp
 )
 
-# Создание исполняемого файла сервера
+# Create server executable
 add_executable(ConnectServer ${SERVER_SOURCES})
 
 target_include_directories(ConnectServer PRIVATE
@@ -67,55 +58,12 @@ target_include_directories(ConnectServer PRIVATE
     ${SQLITE3_INCLUDE_DIRS}
 )
 
-# Создание исполняемого файла клиента
-set(CLIENT_SOURCES
-    ui/qt-frontend/main_client.cpp
-    ui/qt-frontend/MessengerClient.cpp
-    ui/qt-frontend/MessengerClient.h
-    ui/qt-frontend/ChatWidget.cpp
-    ui/qt-frontend/ChatWidget.h
-    ui/qt-frontend/ContactListWidget.cpp
-    ui/qt-frontend/ContactListWidget.h
+# Link Qt libraries (server-only)
+target_link_libraries(ConnectServer PRIVATE
+    Qt6::Core
+    Qt6::Network
+    Qt6::WebSockets
 )
-
-add_executable(ConnectClient ${CLIENT_SOURCES})
-
-target_include_directories(ConnectClient PRIVATE
-    ${CMAKE_CURRENT_SOURCE_DIR}/include
-    ${LIBSODIUM_INCLUDE_DIRS}
-    ${SQLITE3_INCLUDE_DIRS}
-)
-
-# Link libraries based on Qt version
-if(QT_VERSION_MAJOR EQUAL 6)
-    target_link_libraries(ConnectServer PRIVATE
-        Qt6::Core
-        Qt6::Network
-        Qt6::WebSockets
-    )
-    target_link_libraries(ConnectClient PRIVATE
-        Qt6::Core
-        Qt6::Network
-        Qt6::WebSockets
-        Qt6::Widgets
-        Qt6::Multimedia
-        Qt6::MultimediaWidgets
-    )
-else()
-    target_link_libraries(ConnectServer PRIVATE
-        Qt5::Core
-        Qt5::Network
-        Qt5::WebSockets
-    )
-    target_link_libraries(ConnectClient PRIVATE
-        Qt5::Core
-        Qt5::Network
-        Qt5::WebSockets
-        Qt5::Widgets
-        Qt5::Multimedia
-        Qt5::MultimediaWidgets
-    )
-endif()
 
 # Link other libraries if found
 if(LIBSODIUM_FOUND)
@@ -126,7 +74,6 @@ endif()
 if(SQLITE3_FOUND)
     target_link_libraries(ConnectServer PRIVATE ${SQLITE3_LIBRARIES})
 else()
-    # Use built-in SQLite if external not found
     message(WARNING "SQLite3 not found, using built-in version")
 endif()
 
@@ -137,7 +84,7 @@ if(OpenSSL_FOUND)
     )
 endif()
 
-# Создание директорий для данных
+# Create data directories
 file(MAKE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/data)
 file(MAKE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/media/uploads)
 
@@ -156,4 +103,4 @@ endif()
 # Enable debug symbols in release mode for better crash reports
 set_target_properties(ConnectServer PROPERTIES
     COMPILE_FLAGS_RELEASE "-O2 -g"
-)
+) 
