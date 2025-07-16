@@ -218,6 +218,7 @@
                 <button id="connectBtn" onclick="connectToServer()">Connect</button>
                 <button id="loginBtn" onclick="login()" disabled>Login</button>
                 <div id="status" class="status disconnected">Disconnected</div>
+                <small style="color: #666; margin-top: 5px; display: block;">Railway users: URL will be auto-detected</small>
             </div>
 
             <div class="contacts-panel">
@@ -501,18 +502,17 @@
         }
 
         // Auto-detect Railway URL
-        if (window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
-            const wsUrl = `wss://${window.location.hostname}`;
-            document.getElementById('serverUrl').value = wsUrl;
-            console.log('Auto-detected WebSocket URL:', wsUrl);
-        }
-
-        // Auto-connect for Railway
         window.addEventListener('load', function() {
             if (window.location.hostname.includes('railway.app')) {
                 console.log('Railway deployment detected, auto-setting URL');
+                // Railway routes WebSocket through the same domain/port as HTTP
                 const wsUrl = `wss://${window.location.hostname}`;
                 document.getElementById('serverUrl').value = wsUrl;
+                console.log('Auto-detected Railway WebSocket URL:', wsUrl);
+            } else if (window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
+                const wsUrl = `wss://${window.location.hostname}`;
+                document.getElementById('serverUrl').value = wsUrl;
+                console.log('Auto-detected WebSocket URL:', wsUrl);
             }
         });
     </script>

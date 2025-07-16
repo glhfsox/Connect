@@ -14,7 +14,6 @@
   "environments": {
     "production": {
       "variables": {
-        "CONNECT_PORT": "9001",
         "CONNECT_DB_PATH": "/app/data/messenger.db",
         "QT_QPA_PLATFORM": "offscreen"
       }
