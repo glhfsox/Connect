@@ -90,7 +90,7 @@ void WebSocketServer::onTcpConnection() {
             socket->readAll();
             
             // Read web_client.html file
-            QFile file("../web_client.html");
+            QFile file("web_client.html");
             QByteArray html;
             if (file.open(QIODevice::ReadOnly)) {
                 html = file.readAll();
@@ -112,7 +112,7 @@ void WebSocketServer::onTcpConnection() {
         if (requestStr.startsWith("GET /client")) {
             socket->readAll();
             
-            QFile file("../web_client.html");
+            QFile file("web_client.html");
             QByteArray html;
             if (file.open(QIODevice::ReadOnly)) {
                 html = file.readAll();
