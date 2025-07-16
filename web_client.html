@@ -269,6 +269,9 @@
             const serverUrl = document.getElementById('serverUrl').value;
             const username = document.getElementById('username').value.trim();
 
+            console.log('Attempting to connect to:', serverUrl);
+            console.log('Username:', username);
+
             if (!username) {
                 alert('Please enter a username');
                 return;
@@ -278,19 +281,29 @@
             updateStatus('Connecting...', 'connecting');
 
             try {
+                console.log('Creating WebSocket connection...');
                 socket = new WebSocket(serverUrl);
 
                 socket.onopen = function() {
+                    console.log('WebSocket connected successfully');
                     isConnected = true;
                     updateStatus('Connected', 'connected');
                     updateButtons();
+                    
+                    // Auto-login after connection
+                    setTimeout(() => {
+                        console.log('Auto-logging in...');
+                        login();
+                    }, 500);
                 };
 
                 socket.onmessage = function(event) {
+                    console.log('Received message:', event.data);
                     handleMessage(JSON.parse(event.data));
                 };
 
-                socket.onclose = function() {
+                socket.onclose = function(event) {
+                    console.log('WebSocket closed:', event.code, event.reason);
                     isConnected = false;
                     isAuthenticated = false;
                     updateStatus('Disconnected', 'disconnected');
@@ -298,18 +311,23 @@
                 };
 
                 socket.onerror = function(error) {
-                    updateStatus('Connection Error', 'disconnected');
                     console.error('WebSocket error:', error);
+                    updateStatus('Connection Error', 'disconnected');
                 };
 
             } catch (error) {
+                console.error('Failed to create WebSocket:', error);
                 updateStatus('Connection Failed', 'disconnected');
-                console.error('Connection error:', error);
             }
         }
 
         function login() {
+            console.log('Login function called');
+            console.log('Socket state:', socket ? socket.readyState : 'no socket');
+            console.log('Current user:', currentUser);
+            
             if (!socket || socket.readyState !== WebSocket.OPEN) {
+                console.log('Cannot login: socket not ready');
                 return;
             }
 
@@ -318,6 +336,7 @@
                 username: currentUser
             };
 
+            console.log('Sending auth message:', message);
             socket.send(JSON.stringify(message));
         }
 
@@ -326,7 +345,9 @@
 
             switch (data.type) {
                 case 'auth_response':
+                    console.log('Authentication response:', data);
                     if (data.status === 'success') {
+                        console.log('Authentication successful!');
                         isAuthenticated = true;
                         updateStatus('Authenticated', 'connected');
                         updateButtons();
@@ -335,7 +356,9 @@
                         addContact('Alice');
                         addContact('Bob');
                         addContact('Charlie');
+                        console.log('Demo contacts added');
                     } else {
+                        console.log('Authentication failed:', data.message);
                         alert('Authentication failed: ' + data.message);
                     }
                     break;
@@ -481,7 +504,17 @@
         if (window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
             const wsUrl = `wss://${window.location.hostname}`;
             document.getElementById('serverUrl').value = wsUrl;
+            console.log('Auto-detected WebSocket URL:', wsUrl);
         }
+
+        // Auto-connect for Railway
+        window.addEventListener('load', function() {
+            if (window.location.hostname.includes('railway.app')) {
+                console.log('Railway deployment detected, auto-setting URL');
+                const wsUrl = `wss://${window.location.hostname}`;
+                document.getElementById('serverUrl').value = wsUrl;
+            }
+        });
     </script>
 </body>
 </html> 
